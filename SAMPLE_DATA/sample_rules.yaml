@@ -1,0 +1,90 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# DQ-FIX Sample Validation Rules
+# ─────────────────────────────────────────────────────────────────────────────
+# Each rule specifies:
+#   column   : The column to validate
+#   type     : Validation type (not_null, unique, range, regex, email, date, phone)
+#   params   : Type-specific parameters
+#   severity : low | medium | high
+# ─────────────────────────────────────────────────────────────────────────────
+
+dataset: customers
+description: Validation rules for customer dataset
+
+rules:
+
+  # ── Not Null Rules ─────────────────────────────────────────────────────────
+  - id: R001
+    column: customer_id
+    type: not_null
+    severity: high
+    description: Customer ID must not be null
+
+  - id: R002
+    column: name
+    type: not_null
+    severity: high
+    description: Customer name must not be null
+
+  - id: R003
+    column: email
+    type: not_null
+    severity: high
+    description: Email address must not be null
+
+  - id: R004
+    column: country
+    type: not_null
+    severity: medium
+    description: Country must not be null
+
+  # ── Unique Rules ───────────────────────────────────────────────────────────
+  - id: R005
+    column: customer_id
+    type: unique
+    severity: high
+    description: Customer ID must be unique
+
+  # ── Range Rules ────────────────────────────────────────────────────────────
+  - id: R006
+    column: age
+    type: range
+    params:
+      min: 0
+      max: 120
+    severity: medium
+    description: Age must be between 0 and 120
+
+  # ── Regex Rules ────────────────────────────────────────────────────────────
+  - id: R007
+    column: country
+    type: regex
+    params:
+      pattern: "^[A-Z]{2}$"
+    severity: low
+    description: Country code must be exactly 2 uppercase letters
+
+  # ── Email Rules ────────────────────────────────────────────────────────────
+  - id: R008
+    column: email
+    type: email
+    severity: medium
+    description: Email must be a valid email address format
+
+  # ── Date Rules ─────────────────────────────────────────────────────────────
+  - id: R009
+    column: signup_date
+    type: date
+    params:
+      format: "%Y-%m-%d"
+    severity: low
+    description: Signup date must be in YYYY-MM-DD format
+
+  # ── Phone Rules ────────────────────────────────────────────────────────────
+  - id: R010
+    column: phone
+    type: phone
+    params:
+      pattern: "^\\+\\d{1,3}-\\d{3}-\\d{4}$"
+    severity: low
+    description: Phone must be in +X-XXX-XXXX format

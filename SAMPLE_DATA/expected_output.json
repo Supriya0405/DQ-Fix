@@ -1,0 +1,51 @@
+{
+  "dataset": "invalid_customers.csv",
+  "total_records": 11,
+  "validation_summary": {
+    "R001": { "rule": "not_null", "column": "customer_id", "passed": 11, "failed": 0 },
+    "R002": { "rule": "not_null", "column": "name",        "passed": 9,  "failed": 2 },
+    "R003": { "rule": "not_null", "column": "email",       "passed": 10, "failed": 1 },
+    "R004": { "rule": "not_null", "column": "country",     "passed": 10, "failed": 1 },
+    "R005": { "rule": "unique",   "column": "customer_id", "passed": 10, "failed": 1 },
+    "R006": { "rule": "range",    "column": "age",         "passed": 9,  "failed": 2 },
+    "R007": { "rule": "regex",    "column": "country",     "passed": 10, "failed": 1 },
+    "R008": { "rule": "email",    "column": "email",       "passed": 8,  "failed": 2 },
+    "R009": { "rule": "date",     "column": "signup_date", "passed": 8,  "failed": 3 },
+    "R010": { "rule": "phone",    "column": "phone",       "passed": 9,  "failed": 2 }
+  },
+  "sample_failures": [
+    {
+      "rule_id": "R002",
+      "row_index": 1,
+      "column": "name",
+      "value": null,
+      "reason": "Name is null",
+      "severity": "high"
+    },
+    {
+      "rule_id": "R006",
+      "row_index": 2,
+      "column": "age",
+      "value": 200,
+      "reason": "Age 200 exceeds maximum of 120",
+      "severity": "medium"
+    },
+    {
+      "rule_id": "R008",
+      "row_index": 2,
+      "column": "email",
+      "value": "carol-at-example.com",
+      "reason": "Invalid email format",
+      "severity": "medium"
+    }
+  ],
+  "ai_suggestions_example": {
+    "rule_id": "R006",
+    "root_cause": "Age column contains outlier values beyond realistic human age range, likely due to data entry error or unit mismatch.",
+    "sql_fix": "UPDATE customers SET age = NULL WHERE age < 0 OR age > 120;",
+    "pandas_fix": "df.loc[(df['age'] < 0) | (df['age'] > 120), 'age'] = None",
+    "prevention": "Add input validation at data entry point to restrict age to 0-120 range.",
+    "severity": "medium",
+    "confidence": 85
+  }
+}
