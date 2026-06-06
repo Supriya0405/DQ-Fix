@@ -17,8 +17,18 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 
 
-# ─── Supported Validation Types ─────────────────────────────────────────────
-VALID_RULE_TYPES = {"not_null", "unique", "range", "regex", "email", "date", "phone"}
+# ─── Supported Validation Types (30 types) ─────────────────────────────────
+VALID_RULE_TYPES = {
+    # Core (original 7)
+    "not_null", "unique", "range", "regex", "email", "date", "phone",
+    # Extended (23 new)
+    "allowed_values", "numeric", "positive", "min_length", "max_length",
+    "duplicate_row", "future_date", "date_format", "placeholder",
+    "missing_threshold", "customer_id_pattern", "email_domain",
+    "currency", "country", "date_order", "age", "salary",
+    "transaction_amount", "outlier", "cross_field", "business_rule",
+    "data_consistency", "data_freshness",
+}
 VALID_SEVERITIES = {"low", "medium", "high"}
 
 

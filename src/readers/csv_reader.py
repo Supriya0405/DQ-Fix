@@ -49,23 +49,34 @@ class CSVReader:
         used_encoding = None
         last_error = None
 
+        # Common separators to try (auto-detect delimiter)
+        separators = [",", "\t", ";", "|"]
+
         for encoding in self.ENCODINGS:
-            try:
-                if file_buffer is not None:
-                    # Streamlit uploads give us a BytesIO buffer
-                    file_buffer.seek(0)
-                    df = pd.read_csv(file_buffer, encoding=encoding)
-                else:
-                    df = pd.read_csv(file_path, encoding=encoding)
-                used_encoding = encoding
-                break  # Success — stop trying encodings
-            except (UnicodeDecodeError, UnicodeError) as e:
-                last_error = e
-                continue  # Try next encoding
-            except pd.errors.EmptyDataError:
-                raise ValueError("The CSV file is empty.")
-            except pd.errors.ParserError as e:
-                raise ValueError(f"CSV parsing error: {e}")
+            for sep in separators:
+                try:
+                    if file_buffer is not None:
+                        file_buffer.seek(0)
+                        df = pd.read_csv(file_buffer, encoding=encoding, sep=sep)
+                    else:
+                        df = pd.read_csv(file_path, encoding=encoding, sep=sep)
+                    # Check if we got multiple columns (not just one long column)
+                    if len(df.columns) > 1:
+                        used_encoding = encoding
+                        break  # Good parse
+                except (UnicodeDecodeError, UnicodeError) as e:
+                    last_error = e
+                    continue
+                except pd.errors.EmptyDataError:
+                    raise ValueError("The CSV file is empty.")
+                except pd.errors.ParserError as e:
+                    last_error = e
+                    continue
+            if used_encoding is not None:
+                break
+            # If only 1 column with comma, try other separators
+            if df is not None and len(df.columns) <= 1:
+                df = None  # Reset and try next encoding+separator combo
 
         if df is None:
             raise ValueError(
@@ -74,18 +85,30 @@ class CSVReader:
             )
 
         # ── Build Metadata ────────────────────────────────────────────────
-        info = self._build_metadata(df, file_path, used_encoding)
+        # Get file name from buffer if available (Streamlit uploads)
+        buffer_name = None
+        if file_buffer is not None and hasattr(file_buffer, 'name'):
+            buffer_name = file_buffer.name
+        info = self._build_metadata(df, file_path, used_encoding, buffer_name)
 
         return df, info
 
     def _build_metadata(
-        self, df: pd.DataFrame, file_path: str, encoding: str
+        self, df: pd.DataFrame, file_path: str, encoding: str, buffer_name: str = None
     ) -> dict:
         """Build a metadata dictionary summarizing the DataFrame."""
         file_size = os.path.getsize(file_path) if file_path and os.path.exists(file_path) else 0
 
+        # Determine file name: prefer buffer_name (upload), then file_path, then default
+        if buffer_name:
+            file_name = os.path.basename(buffer_name)
+        elif file_path:
+            file_name = os.path.basename(file_path)
+        else:
+            file_name = "uploaded_file.csv"
+
         return {
-            "file_name": os.path.basename(file_path) if file_path else "uploaded_file.csv",
+            "file_name": file_name,
             "file_size_bytes": file_size,
             "encoding": encoding,
             "rows": len(df),

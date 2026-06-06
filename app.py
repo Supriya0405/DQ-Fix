@@ -1,335 +1,684 @@
 """
-DQ-FIX — Streamlit Application Entry Point
+DQ-FIX — Enterprise Data Quality Dashboard
 ==========================================
-Run this file to launch the dashboard:
-    streamlit run app.py
-
-Phase 3: CSV/Parquet upload + dataset preview + YAML rules viewer.
+Full 3-panel enterprise dashboard with AI-powered data quality analysis.
+Run: streamlit run app.py
 """
 
 import streamlit as st
 import pandas as pd
 import os
 import sys
+import json
 
-# Add project root to path so src/ imports work
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from config.settings import APP_TITLE, APP_ICON, SAMPLE_DATA_DIR, MAX_ROWS_PREVIEW, DEFAULT_RULES_PATH
+from config.settings import (
+    APP_TITLE, APP_ICON, SAMPLE_DATA_DIR, MAX_ROWS_PREVIEW,
+    DEFAULT_RULES_PATH, DATABASE_PATH,
+    SUPPORTED_PROVIDERS, DEFAULT_PROVIDER,
+    GROQ_API_KEY, OPENAI_API_KEY,
+)
 from src.readers.csv_reader import CSVReader
 from src.readers.parquet_reader import ParquetReader
 from src.rules.rule_engine import RuleEngine
+from src.validators.validation_engine import ValidationEngine
+from src.validators.result_models import ValidationResult
+from src.ai.llm_client import LLMClient
+from src.ai.severity_engine import SeverityEngine
+from src.agent.agent_loop import AgentLoop
+from src.api.email_verifier import EmailVerifier
+from src.fixer.auto_fixer import AutoFixer
+from src.database.db_manager import DatabaseManager
 from src.utils.helpers import (
-    get_dataset_summary,
-    format_file_size,
-    get_column_profile,
-    calculate_health_score,
+    get_dataset_summary, format_file_size,
+    get_column_profile, calculate_health_score,
 )
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# MAIN APPLICATION
+# ═══════════════════════════════════════════════════════════════════════════
+
 def main():
-    """Main Streamlit application entry point."""
     st.set_page_config(
-        page_title=APP_TITLE,
-        page_icon=APP_ICON,
-        layout="wide",
-        initial_sidebar_state="expanded",
+        page_title=APP_TITLE, page_icon=APP_ICON,
+        layout="wide", initial_sidebar_state="expanded",
     )
+
+    _init_session_state()
 
     st.title(f"{APP_ICON} {APP_TITLE}")
     st.markdown("---")
 
-    # ── Initialize Session State ──────────────────────────────────────────
-    if "df" not in st.session_state:
-        st.session_state.df = None
-    if "dataset_info" not in st.session_state:
-        st.session_state.dataset_info = None
-    if "rule_engine" not in st.session_state:
-        st.session_state.rule_engine = None
+    # ── Top Metrics Bar ──────────────────────────────────────────────────
+    _render_top_metrics()
 
-    # ── Sidebar: Dataset Upload ───────────────────────────────────────────
-    with st.sidebar:
-        st.header("📂 Dataset Upload")
+    # ── 3-Panel Layout ──────────────────────────────────────────────────
+    left_col, center_col, right_col = st.columns([1, 2, 2])
 
-        uploaded_file = st.file_uploader(
-            "Upload CSV or Parquet file",
-            type=["csv", "parquet"],
-            help="Supported formats: .csv, .parquet",
-        )
+    with left_col:
+        _render_left_panel()
 
-        st.markdown("---")
-        st.markdown("**📦 Sample Datasets**")
-        col_s1, col_s2 = st.columns(2)
-        with col_s1:
-            load_valid = st.button("✅ Valid Data", use_container_width=True)
-        with col_s2:
-            load_invalid = st.button("❌ Invalid Data", use_container_width=True)
+    with center_col:
+        _render_center_panel()
 
-        if load_valid:
-            _load_sample_file("valid_customers.csv")
-        if load_invalid:
-            _load_sample_file("invalid_customers.csv")
+    with right_col:
+        _render_right_panel()
 
-        # ── Sidebar: Validation Rules ────────────────────────────────────
-        st.markdown("---")
-        st.header("📜 Validation Rules")
 
-        rules_file = st.file_uploader(
-            "Upload YAML rules file",
-            type=["yaml", "yml"],
-            help="Upload a YAML file with validation rules",
-            key="rules_upload",
-        )
+def _init_session_state():
+    """Initialize all session state variables."""
+    defaults = {
+        "df": None, "dataset_info": None, "rule_engine": None,
+        "validation_result": None, "ai_analyses": [],
+        "agent_result": None, "cleaned_df": None,
+        "email_results": [], "db": None,
+        "_last_uploaded_file": None,
+        "ai_provider": DEFAULT_PROVIDER,
+        "ai_api_key": GROQ_API_KEY or OPENAI_API_KEY or "",
+    }
+    for key, default in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = default
+    if st.session_state.db is None:
+        try:
+            st.session_state.db = DatabaseManager()
+        except Exception:
+            pass
 
-        col_r1, col_r2 = st.columns(2)
-        with col_r1:
-            load_default_rules = st.button("📄 Default Rules", use_container_width=True)
-        with col_r2:
-            clear_rules = st.button("🗑️ Clear Rules", use_container_width=True)
 
-        if load_default_rules:
+# ═══════════════════════════════════════════════════════════════════════════
+# TOP METRICS BAR
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _render_top_metrics():
+    """Render the top KPI metrics bar."""
+    df = st.session_state.df
+    vr = st.session_state.validation_result
+
+    m1, m2, m3, m4, m5, m6 = st.columns(6)
+
+    with m1:
+        total = len(df) if df is not None else 0
+        st.metric("Total Records", f"{total:,}")
+
+    with m2:
+        if vr:
+            failed = vr.total_failures
+            st.metric("Failed Records", failed,
+                       delta=f"{failed} issues" if failed > 0 else "Clean",
+                       delta_color="inverse" if failed > 0 else "normal")
+        else:
+            st.metric("Failed Records", "—")
+
+    with m3:
+        if st.session_state.ai_analyses:
+            avg_conf = sum(a.get("confidence", 0) for a in st.session_state.ai_analyses) / len(st.session_state.ai_analyses)
+            st.metric("Avg Confidence", f"{avg_conf:.0f}/100")
+        else:
+            st.metric("Avg Confidence", "—")
+
+    with m4:
+        if st.session_state.ai_analyses:
+            high_sev = sum(1 for a in st.session_state.ai_analyses if a.get("severity") == "high")
+            st.metric("High Severity", high_sev,
+                       delta="Critical" if high_sev > 0 else None,
+                       delta_color="inverse" if high_sev > 0 else "off")
+        else:
+            st.metric("High Severity", "—")
+
+    with m5:
+        if df is not None:
+            summary = get_dataset_summary(df)
+            health = calculate_health_score(summary["total_rows"], summary["null_count"],
+                                            summary["duplicated_rows"],
+                                            vr.total_failures if vr else 0)
+            st.metric("Health Score", f"{health}/100",
+                       delta="Good" if health >= 70 else "Needs Work",
+                       delta_color="normal" if health >= 70 else "inverse")
+        else:
+            st.metric("Health Score", "—")
+
+    with m6:
+        agent = st.session_state.agent_result
+        if agent:
+            st.metric("Agent Status", agent.get("status", "idle").replace("_", " ").title())
+        else:
+            st.metric("Agent Status", "Idle")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# LEFT PANEL — Upload, Rules, History
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _render_left_panel():
+    st.header("📂 Dataset")
+
+    uploaded = st.file_uploader("Upload CSV/Parquet", type=["csv", "parquet"], key="data_upload")
+    if uploaded:
+        # Only process if this is a new upload (not already loaded)
+        if st.session_state._last_uploaded_file != uploaded.name:
+            _process_upload(uploaded)
+    elif st.session_state._last_uploaded_file and st.session_state.df is not None:
+        # User cleared the file uploader — keep the data loaded
+        pass
+
+    st.markdown("**📦 Sample Data**")
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("✅ Valid", use_container_width=True):
+            _load_sample("valid_customers.csv")
+    with c2:
+        if st.button("❌ Invalid", use_container_width=True):
+            _load_sample("invalid_customers.csv")
+
+    # Dataset preview
+    if st.session_state.df is not None:
+        info = st.session_state.dataset_info
+        st.markdown(f"**{info['file_name']}** | {info['rows']} rows × {info['columns']} cols")
+        with st.expander("🔍 Preview Data"):
+            st.dataframe(st.session_state.df.head(20), use_container_width=True)
+        with st.expander("📊 Column Types"):
+            dtype_df = pd.DataFrame([{"Column": c, "Type": t} for c, t in info["dtypes"].items()])
+            st.dataframe(dtype_df, use_container_width=True, hide_index=True)
+
+        # Auto-Generate Rules Button
+        if not st.session_state.rule_engine:
+            if st.button("⚡ Auto-Generate Rules (AI)", use_container_width=True,
+                         help="Let AI analyze your data and generate validation rules automatically"):
+                _auto_generate_rules(st.session_state.df, info.get("file_name", "dataset"))
+
+    st.markdown("---")
+    st.header("📜 Rules")
+
+    rules_file = st.file_uploader("Upload YAML rules", type=["yaml", "yml"], key="rules_upload")
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("📄 Default Rules", use_container_width=True):
             _load_rules(DEFAULT_RULES_PATH)
-        if clear_rules:
+    with c2:
+        if st.button("🗑️ Clear", use_container_width=True):
             st.session_state.rule_engine = None
+            st.session_state.validation_result = None
+            st.session_state.ai_analyses = []
             st.rerun()
 
-        if rules_file is not None:
-            _load_rules_from_buffer(rules_file)
+    if rules_file:
+        _load_rules_from_buffer(rules_file)
 
-        st.markdown("---")
-        st.header("📋 Navigation")
-        st.markdown(
-            """
-            - **Dataset Upload** ✓ _(Phase 2)_
-            - **Validation Rules** ✓ _(Phase 3)_
-            - **Validation Results** _(Phase 4)_
-            - **AI Insights** _(Phase 5-6)_
-            - **Agent Loop** _(Phase 7)_
-            - **Apply Fix** _(Phase 10)_
-            - **Download CSV** _(Phase 10)_
-            """
+    if st.session_state.rule_engine:
+        re = st.session_state.rule_engine
+        s = re.summary()
+        st.markdown(f"**{s['total_rules']} rules** loaded | {len(s['columns_covered'])} columns")
+
+    st.markdown("---")
+    st.header("📊 History")
+    if st.session_state.db:
+        try:
+            history = st.session_state.db.get_validation_history(limit=5)
+            if history:
+                for h in history:
+                    status_icon = "✅" if h["status"] == "passed" else "❌"
+                    st.markdown(f"{status_icon} **{h['dataset_name']}** — {h['passed_rules']}/{h['total_rules']} passed | {h['timestamp'][:16]}")
+            else:
+                st.caption("No validation history yet")
+        except Exception:
+            st.caption("Database not available")
+
+    # AI Provider Settings
+    st.markdown("---")
+    st.header("🤖 AI Provider")
+    provider_options = list(SUPPORTED_PROVIDERS.keys())
+    provider_labels = [SUPPORTED_PROVIDERS[p]["name"] for p in provider_options]
+    selected_idx = provider_options.index(st.session_state.ai_provider) if st.session_state.ai_provider in provider_options else 0
+
+    selected_provider = st.radio(
+        "Choose AI provider",
+        options=provider_options,
+        format_func=lambda x: SUPPORTED_PROVIDERS[x]["name"],
+        index=selected_idx,
+        key="_provider_radio",
+        horizontal=False,
+    )
+    st.session_state.ai_provider = selected_provider
+
+    if SUPPORTED_PROVIDERS[selected_provider]["needs_key"]:
+        api_key = st.text_input(
+            "API Key",
+            value=st.session_state.ai_api_key,
+            type="password",
+            key="_api_key_input",
+            help=f"Enter your {selected_provider.title()} API key",
         )
-        st.markdown("---")
-        st.caption("DQ-FIX v1.0.0 — Data Quality Agent")
+        st.session_state.ai_api_key = api_key
 
-    # ── Process Uploaded File ─────────────────────────────────────────────
-    if uploaded_file is not None:
-        _process_uploaded_file(uploaded_file)
-
-    # ── Main Content Area ─────────────────────────────────────────────────
-    if st.session_state.df is not None:
-        _render_dashboard()
+    # Show current status
+    llm = LLMClient(
+        provider=st.session_state.ai_provider,
+        api_key=st.session_state.ai_api_key,
+    )
+    if llm.is_available():
+        st.success(f"✅ Connected: {llm.get_status()}")
     else:
-        _render_welcome()
+        st.warning(f"⚠️ {llm.get_status()}")
 
-    # ── Rules Viewer (shown below main content) ──────────────────────────
-    if st.session_state.rule_engine is not None:
-        _render_rules_viewer()
+    # Email Verification API
+    st.markdown("---")
+    st.header("📧 Email API")
+    test_email = st.text_input("Test email address", value="test@example.com", key="email_test")
+    if st.button("Verify Email", use_container_width=True):
+        verifier = EmailVerifier()
+        result = verifier.verify(test_email)
+        st.session_state.email_results.append(result)
+        api_status = verifier.check_api_status()
+        st.json({"result": result, "api_status": api_status})
+
+    if st.session_state.email_results:
+        for er in st.session_state.email_results[-3:]:
+            icon = "✅" if er["is_valid"] else "❌"
+            st.markdown(f"{icon} **{er['email']}** | Status: {er['api_status']} | Confidence: {er['confidence']}")
 
 
-def _load_sample_file(filename: str):
-    """Load a sample CSV from the SAMPLE_DATA directory."""
-    file_path = os.path.join(SAMPLE_DATA_DIR, filename)
+# ═══════════════════════════════════════════════════════════════════════════
+# CENTER PANEL — Validation Results, Failed Records, Agent Loop
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _render_center_panel():
+    st.header("🔍 Validation")
+
+    df = st.session_state.df
+    re = st.session_state.rule_engine
+
+    if df is None or re is None:
+        st.info("👈 Load a dataset and rules from the left panel to begin validation.")
+        return
+
+    # Check column compatibility between dataset and rules
+    rule_columns = set(r.column for r in re.get_rules())
+    data_columns = set(df.columns.tolist())
+    matching_columns = rule_columns & data_columns
+    missing_columns = rule_columns - data_columns
+
+    if missing_columns and not matching_columns:
+        st.error(f"❌ No matching columns! Your data has: {sorted(data_columns)[:10]}... "
+                 f"but rules expect: {sorted(rule_columns)[:10]}...")
+        st.info("💡 Tip: Use the sample data with default rules, or upload a matching CSV.")
+        return
+    elif missing_columns:
+        st.warning(f"⚠️ {len(missing_columns)} rule columns not found in data: {sorted(missing_columns)[:5]}... "
+                   f"({len(matching_columns)} rules will run)")
+
+    # Run Validation Button
+    c1, c2 = st.columns([1, 2])
+    with c1:
+        run_val = st.button("▶️ Run Validation", type="primary", use_container_width=True)
+    with c2:
+        vr = st.session_state.validation_result
+        if vr:
+            if vr.all_passed:
+                st.success(f"✅ All {vr.total_rules} rules passed!")
+            else:
+                st.warning(f"⚠️ {vr.failed_rules}/{vr.total_rules} rules failed | {vr.total_failures} row failures")
+
+    if run_val:
+        with st.spinner("Running 33 validation rules..."):
+            engine = ValidationEngine()
+            result = engine.validate(df, re.get_rules())
+            st.session_state.validation_result = result
+            # Save to DB
+            if st.session_state.db:
+                try:
+                    run_id = st.session_state.db.save_validation_run(
+                        st.session_state.dataset_info.get("file_name", "unknown"),
+                        len(df), result,
+                    )
+                    st.session_state.current_run_id = run_id
+                except Exception:
+                    pass
+        st.rerun()
+
+    # Validation Results Table
+    vr = st.session_state.validation_result
+    if vr:
+        st.subheader("📋 Rule Summary")
+        summary_df = vr.to_dataframe()
+
+        def highlight(row):
+            color = "#ffcccc" if row["Status"] == "FAIL" else "#ccffcc"
+            return [f"background-color: {color}"] * len(row)
+
+        st.dataframe(summary_df.style.apply(highlight, axis=1),
+                      use_container_width=True, hide_index=True)
+
+        # Failed Records
+        failed = vr.get_failed_results()
+        if failed:
+            st.subheader(f"❌ Failed Records ({len(failed)} rules)")
+            for rr in failed:
+                with st.expander(
+                    f"🔴 {rr.rule_id}: {rr.column} → {rr.rule_type} ({rr.failed_count} failures, {rr.severity})",
+                    expanded=False,
+                ):
+                    st.markdown(f"**Description:** {rr.description}")
+                    st.markdown(f"**Severity:** `{rr.severity.upper()}` | **Failed:** {rr.failed_count}/{rr.total_rows}")
+                    st.markdown(f"**Failed row indices:** {rr.failed_row_indices[:20]}")
+                    for detail in rr.error_details[:5]:
+                        st.markdown(f"- {detail}")
+                    if len(rr.error_details) > 5:
+                        st.caption(f"...and {len(rr.error_details) - 5} more")
+                    if rr.failed_samples is not None:
+                        st.dataframe(rr.failed_samples.head(5), use_container_width=True)
+
+    # Agent Loop Section
+    st.markdown("---")
+    st.header("🤖 Agent Loop")
+
+    if vr and not vr.all_passed:
+        c1, c2 = st.columns([1, 2])
+        with c1:
+            run_agent = st.button("🔄 Run Agent Loop", use_container_width=True,
+                                   help="Auto-validate → LLM analyze → fix → re-validate (max 3 iterations)")
+        with c2:
+            agent = st.session_state.agent_result
+            if agent:
+                status = agent.get("status", "idle")
+                iters = agent.get("total_iterations", 0)
+                st.markdown(f"**Status:** {status.replace('_', ' ').title()} | **Iterations:** {iters}/3")
+
+        if run_agent:
+            progress_bar = st.progress(0, text="Agent loop starting...")
+            loop = AgentLoop(max_iterations=3)
+            progress_bar.progress(10, text="Analyzing failures with AI...")
+            result = loop.run(df, re.get_rules())
+            progress_bar.progress(90, text="Finalizing results...")
+            st.session_state.agent_result = result
+            st.session_state.cleaned_df = result.get("final_df")
+            # Collect AI analyses
+            all_analyses = []
+            for it in result.get("iterations", []):
+                all_analyses.extend(it.get("ai_analyses", []))
+            st.session_state.ai_analyses = all_analyses
+            progress_bar.progress(100, text=f"Done! {result['total_iterations']} iteration(s) completed")
+            import time
+            time.sleep(1)
+            st.rerun()
+
+        # Agent Loop Iteration Details
+        agent = st.session_state.agent_result
+        if agent:
+            for it_data in agent.get("iterations", []):
+                it_num = it_data["iteration"]
+                with st.expander(f"🔄 Iteration {it_num}: {it_data['status']} — {it_data['failed_rules']} rules failed, {it_data['total_failures']} failures"):
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        st.metric("Passed Rules", it_data["passed_rules"])
+                    with c2:
+                        st.metric("Failed Rules", it_data["failed_rules"])
+                    with c3:
+                        st.metric("Fixes Applied", len(it_data.get("fixes_applied", [])))
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# RIGHT PANEL — AI Insights, Fixes, Download
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _render_right_panel():
+    st.header("🧠 AI Insights")
+
+    analyses = st.session_state.ai_analyses
+
+    if not analyses:
+        # Check if we have validation results but no AI analysis yet
+        vr = st.session_state.validation_result
+        if vr and not vr.all_passed:
+            st.info("Run the Agent Loop to generate AI insights, or click below for quick analysis.")
+            if st.button("⚡ Quick AI Analysis", use_container_width=True):
+                _run_quick_analysis(vr)
+        else:
+            st.info("No AI insights yet. Run validation and the agent loop to generate insights.")
+        return
+
+    # LLM status
+    llm = _get_llm_client()
+    llm_status = llm.is_available()
+    if llm_status:
+        st.success(f"🟢 {llm.get_status()}")
+    else:
+        st.warning(f"🟡 {llm.get_status()} — using fallback analysis")
+
+    # AI Analysis Cards
+    for i, analysis in enumerate(analyses[:10]):
+        rule_id = analysis.get("rule_id", f"R{i}")
+        col = analysis.get("column", "unknown")
+        rtype = analysis.get("rule_type", "unknown")
+
+        with st.expander(f"🔍 {rule_id}: {col} → {rtype}", expanded=(i == 0)):
+            # Severity & Confidence badges
+            sev = analysis.get("severity", "medium")
+            conf = analysis.get("confidence", 0)
+            sev_color = {"high": "🔴", "medium": "🟡", "low": "🟢"}.get(sev, "⚪")
+
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.markdown(f"**{sev_color} Severity:** {sev.upper()}")
+            with c2:
+                st.markdown(f"**🎯 Confidence:** {conf}/100")
+            with c3:
+                st.markdown(f"**📊 Affected Rows:** {analysis.get('estimated_affected_rows', '—')}")
+
+            st.markdown("---")
+
+            # Root Cause Analysis
+            st.markdown("**🔬 Root Cause Analysis**")
+            st.markdown(analysis.get("root_cause", "N/A"))
+
+            # Human Readable Explanation
+            st.markdown("**💬 Explanation**")
+            st.markdown(analysis.get("explanation", "N/A"))
+
+            # Business Impact
+            st.markdown("**💼 Business Impact**")
+            st.markdown(analysis.get("business_impact", "N/A"))
+
+            st.markdown("---")
+
+            # SQL Fix
+            st.markdown("**🗄️ SQL Fix**")
+            st.code(analysis.get("sql_fix", "-- No fix available"), language="sql")
+
+            # Pandas Fix
+            st.markdown("**🐍 Pandas Fix**")
+            st.code(analysis.get("pandas_fix", "# No fix available"), language="python")
+
+            # Prevention
+            st.markdown("**🛡️ Prevention**")
+            st.markdown(analysis.get("prevention", "N/A"))
+
+            # Permanent Fix
+            st.markdown("**🔧 Permanent Fix**")
+            st.markdown(analysis.get("permanent_fix", "N/A"))
+
+            if analysis.get("fallback"):
+                st.caption("⚠️ Generated by fallback engine (LLM unavailable)")
+
+    # Apply Fix & Download
+    st.markdown("---")
+    st.subheader("🔧 Actions")
+
+    if st.session_state.cleaned_df is not None:
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("✅ Apply Suggested Fix", use_container_width=True, type="primary"):
+                st.session_state.df = st.session_state.cleaned_df
+                st.session_state.validation_result = None
+                st.success("Fix applied! Re-run validation to verify.")
+                st.rerun()
+        with c2:
+            fixer = AutoFixer()
+            csv_bytes = fixer.to_csv_bytes(st.session_state.cleaned_df)
+            st.download_button(
+                "⬇️ Download Cleaned CSV",
+                data=csv_bytes,
+                file_name="cleaned_data.csv",
+                mime="text/csv",
+                use_container_width=True,
+            )
+    else:
+        st.caption("Run the agent loop to generate fix suggestions.")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# HELPER FUNCTIONS
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _process_upload(uploaded_file):
+    name = uploaded_file.name.lower()
     try:
-        reader = CSVReader()
-        df, info = reader.read(file_path)
+        if name.endswith(".csv"):
+            reader = CSVReader()
+            df, info = reader.read(file_buffer=uploaded_file)
+        elif name.endswith(".parquet"):
+            reader = ParquetReader()
+            df, info = reader.read(file_buffer=uploaded_file)
+        else:
+            return
         st.session_state.df = df
         st.session_state.dataset_info = info
+        st.session_state._last_uploaded_file = uploaded_file.name
+        # Reset all downstream state for a clean start
+        st.session_state.validation_result = None
+        st.session_state.ai_analyses = []
+        st.session_state.agent_result = None
+        st.session_state.cleaned_df = None
         st.rerun()
     except Exception as e:
-        st.error(f"Error loading sample file: {e}")
+        st.error(f"Error reading file: {e}")
 
 
-def _load_rules(yaml_path: str):
-    """Load rules from a YAML file path."""
+def _load_sample(filename):
+    path = os.path.join(SAMPLE_DATA_DIR, filename)
+    try:
+        reader = CSVReader()
+        df, info = reader.read(path)
+        st.session_state.df = df
+        st.session_state.dataset_info = info
+        st.session_state._last_uploaded_file = None  # Reset upload tracking
+        # Reset all downstream state for a clean start
+        st.session_state.validation_result = None
+        st.session_state.ai_analyses = []
+        st.session_state.agent_result = None
+        st.session_state.cleaned_df = None
+        st.rerun()
+    except Exception as e:
+        st.error(f"Error: {e}")
+
+
+def _load_rules(yaml_path):
     try:
         engine = RuleEngine(yaml_path=yaml_path)
         st.session_state.rule_engine = engine
+        # Reset downstream state
+        st.session_state.validation_result = None
+        st.session_state.ai_analyses = []
+        st.session_state.agent_result = None
+        st.session_state.cleaned_df = None
         st.rerun()
     except Exception as e:
         st.error(f"Error loading rules: {e}")
 
 
 def _load_rules_from_buffer(uploaded_file):
-    """Load rules from a Streamlit uploaded file buffer."""
     try:
         content = uploaded_file.read().decode("utf-8")
         engine = RuleEngine(yaml_content=content)
         st.session_state.rule_engine = engine
+        # Reset downstream state
+        st.session_state.validation_result = None
+        st.session_state.ai_analyses = []
+        st.session_state.agent_result = None
+        st.session_state.cleaned_df = None
         st.rerun()
     except Exception as e:
-        st.error(f"Error parsing rules file: {e}")
+        st.error(f"Error parsing rules: {e}")
 
 
-def _process_uploaded_file(uploaded_file):
-    """Process an uploaded CSV or Parquet file."""
-    file_name = uploaded_file.name.lower()
-    try:
-        if file_name.endswith(".csv"):
-            reader = CSVReader()
-            df, info = reader.read(file_buffer=uploaded_file)
-        elif file_name.endswith(".parquet"):
-            reader = ParquetReader()
-            df, info = reader.read(file_buffer=uploaded_file)
-        else:
-            st.error("Unsupported file format. Please upload CSV or Parquet.")
-            return
-
-        st.session_state.df = df
-        st.session_state.dataset_info = info
-    except Exception as e:
-        st.error(f"Error reading file: {e}")
-
-
-def _render_rules_viewer():
-    """Render the validation rules viewer section."""
-    engine = st.session_state.rule_engine
-    rules_summary = engine.summary()
-
-    st.markdown("---")
-    st.header("📜 Validation Rules Viewer")
-
-    # Summary metrics
-    rs1, rs2, rs3, rs4 = st.columns(4)
-    with rs1:
-        st.metric("Total Rules", rules_summary["total_rules"])
-    with rs2:
-        st.metric("Columns Covered", len(rules_summary["columns_covered"]))
-    with rs3:
-        st.metric("High Severity", len(engine.get_rules_by_severity("high")))
-    with rs4:
-        st.metric("Parse Errors", rules_summary["parse_errors"])
-
-    # Rules by type
-    st.markdown("**Rules by Type:**")
-    type_cols = st.columns(len(rules_summary["by_type"]) or 1)
-    for i, (rtype, count) in enumerate(rules_summary["by_type"].items()):
-        with type_cols[i]:
-            st.metric(rtype.replace("_", " ").title(), count)
-
-    # Rules table
-    st.markdown("---")
-    st.subheader("📋 All Rules")
-    rules_df = engine.to_dataframe()
-    # Reorder columns for display
-    display_cols = ["id", "column", "type", "severity", "description"]
-    st.dataframe(rules_df[display_cols], use_container_width=True, hide_index=True)
-
-    # Errors
-    errors = engine.get_errors()
-    if errors:
-        st.warning(f"**{len(errors)} parsing error(s):**")
-        for err in errors:
-            st.error(err)
-
-    # Dataset metadata
-    st.markdown(f"**Dataset:** {engine.get_dataset_name()} | **Description:** {engine.get_dataset_description()}")
+def _run_quick_analysis(vr):
+    """Run quick AI analysis without agent loop."""
+    llm = _get_llm_client()
+    sev_engine = SeverityEngine()
+    analyses = []
+    for rr in vr.get_failed_results()[:5]:
+        analysis = llm.analyze_failure(rr, rr.failed_samples)
+        analysis["severity"] = sev_engine.calculate_severity(
+            rr.rule_type, rr.failed_count, rr.total_rows, rr.severity)
+        analysis["confidence"] = sev_engine.calculate_confidence(
+            rr.rule_type, rr.failed_count, rr.total_rows, True, llm.is_available())
+        analysis["rule_id"] = rr.rule_id
+        analysis["rule_type"] = rr.rule_type
+        analysis["column"] = rr.column
+        analysis["failed_count"] = rr.failed_count
+        analyses.append(analysis)
+        # Save to DB
+        if st.session_state.db:
+            try:
+                run_id = getattr(st.session_state, 'current_run_id', 1)
+                st.session_state.db.save_ai_analysis(run_id, analysis)
+            except Exception:
+                pass
+    st.session_state.ai_analyses = analyses
+    st.rerun()
 
 
-def _render_welcome():
-    """Render the welcome screen when no dataset is loaded."""
-    st.info(
-        "👈 **Upload a dataset** from the sidebar to get started, or click "
-        "a sample dataset button to try it out."
+def _get_llm_client() -> LLMClient:
+    """Get an LLM client configured with the selected provider and API key."""
+    return LLMClient(
+        provider=st.session_state.get("ai_provider", DEFAULT_PROVIDER),
+        api_key=st.session_state.get("ai_api_key", ""),
     )
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Supported Formats", "CSV, Parquet")
-    with col2:
-        st.metric("Validation Types", "7 Types")
-    with col3:
-        st.metric("AI Analysis", "Ollama + Llama3")
 
+def _auto_generate_rules(df, dataset_name):
+    """Use AI to analyze the dataset and generate validation rules automatically."""
+    with st.spinner("AI is analyzing your dataset and generating rules..."):
+        try:
+            llm = _get_llm_client()
+            yaml_content = llm.generate_rules(df, dataset_name)
 
-def _render_dashboard():
-    """Render the main dashboard with dataset preview and stats."""
-    df = st.session_state.df
-    info = st.session_state.dataset_info
-    summary = get_dataset_summary(df)
+            # Try to parse the generated YAML
+            import yaml
+            parsed = yaml.safe_load(yaml_content)
+            if not parsed or "rules" not in parsed:
+                st.error("AI generated invalid rules format. Using fallback rule generation.")
+                # Use fallback directly
+                yaml_content = llm._fallback_generate_rules(df, dataset_name)
+                parsed = yaml.safe_load(yaml_content)
 
-    # ── Top Metrics Bar ───────────────────────────────────────────────────
-    st.subheader("📊 Dataset Overview")
-
-    health_score = calculate_health_score(
-        total_rows=summary["total_rows"],
-        null_count=summary["null_count"],
-        duplicated_rows=summary["duplicated_rows"],
-    )
-
-    m1, m2, m3, m4, m5 = st.columns(5)
-    with m1:
-        st.metric("Total Records", f"{summary['total_rows']:,}")
-    with m2:
-        st.metric("Columns", summary["total_columns"])
-    with m3:
-        st.metric("Null Values", summary["null_count"])
-    with m4:
-        st.metric("Duplicates", summary["duplicated_rows"])
-    with m5:
-        st.metric(
-            "Health Score",
-            f"{health_score}/100",
-            delta="Good" if health_score >= 70 else "Needs Attention",
-            delta_color="normal" if health_score >= 70 else "inverse",
-        )
-
-    st.markdown("---")
-
-    # ── Two-Column Layout ─────────────────────────────────────────────────
-    left_col, right_col = st.columns([3, 2])
-
-    with left_col:
-        # Dataset Preview
-        st.subheader("🔍 Dataset Preview")
-        st.dataframe(df.head(MAX_ROWS_PREVIEW), use_container_width=True)
-
-        # File Info
-        st.markdown("---")
-        st.subheader("📁 File Information")
-        info_col1, info_col2 = st.columns(2)
-        with info_col1:
-            st.markdown(f"**File Name:** {info['file_name']}")
-            st.markdown(f"**File Size:** {format_file_size(info['file_size_bytes'])}")
-            if "encoding" in info:
-                st.markdown(f"**Encoding:** {info['encoding']}")
-        with info_col2:
-            st.markdown(f"**Rows:** {info['rows']}")
-            st.markdown(f"**Columns:** {info['columns']}")
-            st.markdown(f"**Duplicated Rows:** {info['duplicated_rows']}")
-
-    with right_col:
-        # Column Types
-        st.subheader("🏷️ Column Types")
-        dtype_df = pd.DataFrame(
-            [{"Column": col, "Type": dtype} for col, dtype in info["dtypes"].items()]
-        )
-        st.dataframe(dtype_df, use_container_width=True, hide_index=True)
-
-        # Null Distribution
-        st.markdown("---")
-        st.subheader("⚠️ Null Distribution")
-        null_data = info.get("null_per_column", {})
-        if null_data and any(v > 0 for v in null_data.values()):
-            null_df = pd.DataFrame(
-                [{"Column": col, "Nulls": count} for col, count in null_data.items()]
-            )
-            st.bar_chart(null_df.set_index("Column"))
-        else:
-            st.success("✅ No null values found!")
-
-        # Column Profiler
-        st.markdown("---")
-        st.subheader("📈 Column Profiler")
-        selected_col = st.selectbox("Select column to profile", list(df.columns))
-        if selected_col:
-            profile = get_column_profile(df, selected_col)
-            for key, value in profile.items():
-                if key not in ("top_values",):
-                    st.markdown(f"**{key}:** `{value}`")
-            if "top_values" in profile:
-                st.markdown("**Top Values:**")
-                st.json(profile["top_values"])
+            # Load into RuleEngine
+            engine = RuleEngine(yaml_content=yaml_content)
+            st.session_state.rule_engine = engine
+            st.session_state.validation_result = None
+            st.session_state.ai_analyses = []
+            st.session_state.agent_result = None
+            st.session_state.cleaned_df = None
+            st.success(f"✅ Generated {engine.summary()['total_rules']} rules for {len(df.columns)} columns!")
+            st.rerun()
+        except Exception as e:
+            st.error(f"Error generating rules: {e}")
+            # Try fallback
+            try:
+                llm = _get_llm_client()
+                yaml_content = llm._fallback_generate_rules(df, dataset_name)
+                engine = RuleEngine(yaml_content=yaml_content)
+                st.session_state.rule_engine = engine
+                st.session_state.validation_result = None
+                st.session_state.ai_analyses = []
+                st.session_state.agent_result = None
+                st.session_state.cleaned_df = None
+                st.success(f"✅ Generated {engine.summary()['total_rules']} rules (heuristic fallback)")
+                st.rerun()
+            except Exception as e2:
+                st.error(f"Fallback also failed: {e2}")
 
 
 if __name__ == "__main__":

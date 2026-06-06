@@ -1,19 +1,20 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# DQ-FIX Sample Validation Rules
+# DQ-FIX Complete Validation Rules (30 Types)
 # ─────────────────────────────────────────────────────────────────────────────
-# Each rule specifies:
-#   column   : The column to validate
-#   type     : Validation type (not_null, unique, range, regex, email, date, phone)
-#   params   : Type-specific parameters
-#   severity : low | medium | high
+# Supports all 30 validation types with configurable parameters.
+# Compatible with Great Expectations-style validation design.
 # ─────────────────────────────────────────────────────────────────────────────
 
 dataset: customers
-description: Validation rules for customer dataset
+description: Complete validation rules for customer dataset (30 validation types)
 
 rules:
 
-  # ── Not Null Rules ─────────────────────────────────────────────────────────
+  # ═══════════════════════════════════════════════════════════════════════
+  # CORE VALIDATIONS (Original 7)
+  # ═══════════════════════════════════════════════════════════════════════
+
+  # 1. Not Null Validation
   - id: R001
     column: customer_id
     type: not_null
@@ -38,14 +39,14 @@ rules:
     severity: medium
     description: Country must not be null
 
-  # ── Unique Rules ───────────────────────────────────────────────────────────
+  # 2. Unique Validation
   - id: R005
     column: customer_id
     type: unique
     severity: high
     description: Customer ID must be unique
 
-  # ── Range Rules ────────────────────────────────────────────────────────────
+  # 3. Range Validation
   - id: R006
     column: age
     type: range
@@ -55,7 +56,7 @@ rules:
     severity: medium
     description: Age must be between 0 and 120
 
-  # ── Regex Rules ────────────────────────────────────────────────────────────
+  # 4. Regex Validation
   - id: R007
     column: country
     type: regex
@@ -64,14 +65,14 @@ rules:
     severity: low
     description: Country code must be exactly 2 uppercase letters
 
-  # ── Email Rules ────────────────────────────────────────────────────────────
+  # 5. Email Validation
   - id: R008
     column: email
     type: email
     severity: medium
     description: Email must be a valid email address format
 
-  # ── Date Rules ─────────────────────────────────────────────────────────────
+  # 6. Date Validation
   - id: R009
     column: signup_date
     type: date
@@ -80,7 +81,7 @@ rules:
     severity: low
     description: Signup date must be in YYYY-MM-DD format
 
-  # ── Phone Rules ────────────────────────────────────────────────────────────
+  # 7. Phone Number Validation
   - id: R010
     column: phone
     type: phone
@@ -88,3 +89,224 @@ rules:
       pattern: "^\\+\\d{1,3}-\\d{3}-\\d{4}$"
     severity: low
     description: Phone must be in +X-XXX-XXXX format
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # EXTENDED VALIDATIONS (23 new types)
+  # ═══════════════════════════════════════════════════════════════════════
+
+  # 8. Allowed Values Validation
+  - id: R011
+    column: country
+    type: allowed_values
+    params:
+      values: ["US", "UK", "CA", "AU", "DE", "FR", "JP", "CN", "IN", "BR"]
+    severity: medium
+    description: Country must be in the list of supported countries
+
+  # 9. Numeric Validation
+  - id: R012
+    column: age
+    type: numeric
+    severity: medium
+    description: Age must be a numeric value
+
+  # 10. Positive Value Validation
+  - id: R013
+    column: age
+    type: positive
+    params:
+      allow_zero: false
+    severity: medium
+    description: Age must be a positive number
+
+  # 11. Minimum Length Validation
+  - id: R014
+    column: name
+    type: min_length
+    params:
+      min_length: 2
+    severity: low
+    description: Name must be at least 2 characters long
+
+  # 12. Maximum Length Validation
+  - id: R015
+    column: name
+    type: max_length
+    params:
+      max_length: 100
+    severity: low
+    description: Name must not exceed 100 characters
+
+  # 13. Duplicate Row Validation
+  - id: R016
+    column: _all
+    type: duplicate_row
+    params:
+      columns: ["customer_id", "name", "email"]
+    severity: high
+    description: No fully duplicate rows allowed
+
+  # 14. Future Date Validation
+  - id: R017
+    column: signup_date
+    type: future_date
+    params:
+      format: "%Y-%m-%d"
+    severity: medium
+    description: Signup date must not be in the future
+
+  # 15. Date Format Validation
+  - id: R018
+    column: signup_date
+    type: date_format
+    params:
+      format: "%Y-%m-%d"
+    severity: low
+    description: Signup date must follow YYYY-MM-DD format
+
+  # 16. Placeholder Value Detection
+  - id: R019
+    column: name
+    type: placeholder
+    params:
+      values: ["N/A", "NA", "null", "none", "TODO", "TBD", "XXX", "test", "dummy"]
+    severity: medium
+    description: Name must not contain placeholder values
+
+  # 17. Missing Value Threshold Validation
+  - id: R020
+    column: email
+    type: missing_threshold
+    params:
+      max_null_pct: 10.0
+    severity: high
+    description: Email column must not have more than 10% null values
+
+  # 18. Customer ID Pattern Validation
+  - id: R021
+    column: customer_id
+    type: customer_id_pattern
+    params:
+      pattern: "^\\d+$"
+    severity: medium
+    description: Customer ID must be numeric digits only
+
+  # 19. Email Domain Validation
+  - id: R022
+    column: email
+    type: email_domain
+    params:
+      domains: ["example.com", "gmail.com", "yahoo.com", "outlook.com"]
+    severity: medium
+    description: Email must belong to an allowed domain
+
+  # 20. Currency Validation (for future salary column)
+  - id: R023
+    column: country
+    type: currency
+    params:
+      currencies: ["US", "UK", "CA", "AU", "DE", "FR", "JP", "CN", "IN", "BR"]
+    severity: medium
+    description: Country code must be a recognized code
+
+  # 21. Country Validation
+  - id: R024
+    column: country
+    type: country
+    params:
+      valid_countries: ["US", "UK", "CA", "AU", "DE", "FR", "JP", "CN", "IN", "BR", "MX", "IT", "ES", "NL"]
+    severity: low
+    description: Country must be a recognized ISO country code
+
+  # 22. Date Order Validation (start before end)
+  - id: R025
+    column: signup_date
+    type: date_order
+    params:
+      start_column: signup_date
+      end_column: signup_date
+      format: "%Y-%m-%d"
+    severity: medium
+    description: Start date must be before end date
+
+  # 23. Age Validation (realistic range)
+  - id: R026
+    column: age
+    type: age
+    params:
+      min: 18
+      max: 100
+    severity: medium
+    description: Age must be between 18 and 100 (realistic adult range)
+
+  # 24. Salary Validation
+  - id: R027
+    column: age
+    type: salary
+    params:
+      min: 0
+      max: 10000000
+    severity: medium
+    description: Salary must be within realistic range
+
+  # 25. Transaction Amount Validation
+  - id: R028
+    column: age
+    type: transaction_amount
+    params:
+      min: 0.01
+      max: 999999.99
+    severity: high
+    description: Transaction amounts must be valid positive numbers
+
+  # 26. Outlier Detection
+  - id: R029
+    column: age
+    type: outlier
+    params:
+      factor: 1.5
+    severity: medium
+    description: Age must not be a statistical outlier (IQR method)
+
+  # 27. Cross Field Validation
+  - id: R030
+    column: age
+    type: cross_field
+    params:
+      column_a: age
+      column_b: age
+      operator: ">="
+    severity: high
+    description: Cross-field relationship must hold
+
+  # 28. Business Rule Validation
+  - id: R031
+    column: age
+    type: business_rule
+    params:
+      expression: "age >= 0"
+    severity: high
+    description: Business rule - age must be non-negative
+
+  # 29. Data Consistency Validation
+  - id: R032
+    column: country
+    type: data_consistency
+    params:
+      reference_column: country
+      check_column: country
+      mappings:
+        US: US
+        UK: UK
+    severity: high
+    description: Data must be internally consistent
+
+  # 30. Data Freshness Validation
+  - id: R033
+    column: signup_date
+    type: data_freshness
+    params:
+      max_age_days: 730
+      format: "%Y-%m-%d"
+    severity: low
+    description: Signup date must be within last 2 years

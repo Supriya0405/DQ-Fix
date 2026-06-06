@@ -9,6 +9,9 @@ build/
 *.egg
 .eggs/
 
+# Secrets — NEVER push API keys
+.env
+
 # Virtual Environment
 venv/
 env/

@@ -1,11 +1,11 @@
-customer_id,name,email,age,phone,signup_date,country
-1,Alice Johnson,alice@example.com,28,+1-555-0101,2024-01-15,US
-2,Bob Smith,bob@example.com,35,+1-555-0102,2024-02-20,UK
-3,Carol White,carol@example.com,42,+1-555-0103,2024-03-10,CA
-4,David Brown,david@example.com,31,+1-555-0104,2024-04-05,AU
-5,Eve Davis,eve@example.com,27,+1-555-0105,2024-05-12,US
-6,Frank Miller,frank@example.com,55,+1-555-0106,2024-06-18,DE
-7,Grace Lee,grace@example.com,23,+1-555-0107,2024-07-22,JP
-8,Henry Wilson,henry@example.com,39,+1-555-0108,2024-08-30,FR
-9,Ivy Chen,ivy@example.com,44,+1-555-0109,2024-09-14,CN
-10,Jack Taylor,jack@example.com,33,+1-555-0110,2024-10-01,US
+customer_id,name,email,age,phone,signup_date,country,salary
+1,Alice Johnson,alice@example.com,28,+1-555-0101,2024-01-15,US,55000
+2,Bob Smith,bob@example.com,35,+1-555-0102,2024-02-20,UK,62000
+3,Carol White,carol@example.com,42,+1-555-0103,2024-03-10,CA,75000
+4,David Brown,david@example.com,31,+1-555-0104,2024-04-05,AU,48000
+5,Eve Davis,eve@example.com,27,+1-555-0105,2024-05-12,US,51000
+6,Frank Miller,frank@example.com,55,+1-555-0106,2024-06-18,DE,82000
+7,Grace Lee,grace@example.com,23,+1-555-0107,2024-07-22,JP,42000
+8,Henry Wilson,henry@example.com,39,+1-555-0108,2024-08-30,FR,58000
+9,Ivy Chen,ivy@example.com,44,+1-555-0109,2024-09-14,CN,67000
+10,Jack Taylor,jack@example.com,33,+1-555-0110,2024-10-01,US,71000

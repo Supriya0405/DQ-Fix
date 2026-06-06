@@ -5,6 +5,8 @@ All project-wide settings live here. Single source of truth for configuration.
 """
 
 import os
+from dotenv import load_dotenv
+load_dotenv()  # Load API keys from .env file (gitignored)
 
 # ─── Paths ──────────────────────────────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -18,6 +20,37 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3")
 OLLAMA_API_ENDPOINT = f"{OLLAMA_BASE_URL}/api/generate"
 OLLAMA_TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT", "120"))  # seconds
 
+# ─── External LLM Provider Configuration ───────────────────────────────────
+# ╔═══════════════════════════════════════════════════════════════════════╗
+# ║  PASTE YOUR API KEY BELOW (for Groq or OpenAI)                       ║
+# ║  Groq free key: https://console.groq.com → API Keys → Create         ║
+# ║  OpenAI key:    https://platform.openai.com → API Keys               ║
+# ╚═══════════════════════════════════════════════════════════════════════╝
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")       # Set in .env file (gitignored)
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")   # Set in .env file (gitignored)
+
+SUPPORTED_PROVIDERS = {
+    "ollama": {
+        "name": "Ollama (Local/Free)",
+        "base_url": OLLAMA_BASE_URL,
+        "model": OLLAMA_MODEL,
+        "needs_key": False,
+    },
+    "groq": {
+        "name": "Groq (Free API)",
+        "base_url": "https://api.groq.com/openai/v1",
+        "model": "llama-3.3-70b-versatile",
+        "needs_key": True,
+    },
+    "openai": {
+        "name": "OpenAI (Paid)",
+        "base_url": "https://api.openai.com/v1",
+        "model": "gpt-4o-mini",
+        "needs_key": True,
+    },
+}
+DEFAULT_PROVIDER = "groq"  # groq=fast+free, ollama=local, openai=paid
+
 # ─── Agent Loop Configuration ───────────────────────────────────────────────
 MAX_AGENT_ITERATIONS = 3  # Maximum fix-retry cycles before stopping
 AGENT_STOP_ON_SUCCESS = True  # Stop immediately when all validations pass
@@ -29,6 +62,7 @@ EMAIL_API_KEY = os.getenv("EMAIL_API_KEY", "")
 
 # ─── Validation Defaults ───────────────────────────────────────────────────
 DEFAULT_SEVERITY_MAP = {
+    # Core validations
     "not_null": "high",
     "unique": "high",
     "range": "medium",
@@ -36,6 +70,30 @@ DEFAULT_SEVERITY_MAP = {
     "email": "medium",
     "date": "low",
     "phone": "low",
+    # Extended validations
+    "allowed_values": "medium",
+    "numeric": "medium",
+    "positive": "medium",
+    "min_length": "low",
+    "max_length": "low",
+    "duplicate_row": "high",
+    "future_date": "medium",
+    "date_format": "low",
+    "placeholder": "medium",
+    "missing_threshold": "high",
+    "customer_id_pattern": "medium",
+    "email_domain": "medium",
+    "currency": "medium",
+    "country": "low",
+    "date_order": "medium",
+    "age": "medium",
+    "salary": "medium",
+    "transaction_amount": "high",
+    "outlier": "medium",
+    "cross_field": "high",
+    "business_rule": "high",
+    "data_consistency": "high",
+    "data_freshness": "low",
 }
 
 # ─── Confidence Scoring ────────────────────────────────────────────────────
