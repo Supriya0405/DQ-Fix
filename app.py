@@ -4,7 +4,7 @@ DQ-FIX — Streamlit Application Entry Point
 Run this file to launch the dashboard:
     streamlit run app.py
 
-Phase 2: CSV/Parquet upload + dataset preview.
+Phase 3: CSV/Parquet upload + dataset preview + YAML rules viewer.
 """
 
 import streamlit as st
@@ -15,9 +15,10 @@ import sys
 # Add project root to path so src/ imports work
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from config.settings import APP_TITLE, APP_ICON, SAMPLE_DATA_DIR, MAX_ROWS_PREVIEW
+from config.settings import APP_TITLE, APP_ICON, SAMPLE_DATA_DIR, MAX_ROWS_PREVIEW, DEFAULT_RULES_PATH
 from src.readers.csv_reader import CSVReader
 from src.readers.parquet_reader import ParquetReader
+from src.rules.rule_engine import RuleEngine
 from src.utils.helpers import (
     get_dataset_summary,
     format_file_size,
@@ -43,6 +44,8 @@ def main():
         st.session_state.df = None
     if "dataset_info" not in st.session_state:
         st.session_state.dataset_info = None
+    if "rule_engine" not in st.session_state:
+        st.session_state.rule_engine = None
 
     # ── Sidebar: Dataset Upload ───────────────────────────────────────────
     with st.sidebar:
@@ -67,12 +70,38 @@ def main():
         if load_invalid:
             _load_sample_file("invalid_customers.csv")
 
+        # ── Sidebar: Validation Rules ────────────────────────────────────
+        st.markdown("---")
+        st.header("📜 Validation Rules")
+
+        rules_file = st.file_uploader(
+            "Upload YAML rules file",
+            type=["yaml", "yml"],
+            help="Upload a YAML file with validation rules",
+            key="rules_upload",
+        )
+
+        col_r1, col_r2 = st.columns(2)
+        with col_r1:
+            load_default_rules = st.button("📄 Default Rules", use_container_width=True)
+        with col_r2:
+            clear_rules = st.button("🗑️ Clear Rules", use_container_width=True)
+
+        if load_default_rules:
+            _load_rules(DEFAULT_RULES_PATH)
+        if clear_rules:
+            st.session_state.rule_engine = None
+            st.rerun()
+
+        if rules_file is not None:
+            _load_rules_from_buffer(rules_file)
+
         st.markdown("---")
         st.header("📋 Navigation")
         st.markdown(
             """
             - **Dataset Upload** ✓ _(Phase 2)_
-            - **Validation Rules** _(Phase 3)_
+            - **Validation Rules** ✓ _(Phase 3)_
             - **Validation Results** _(Phase 4)_
             - **AI Insights** _(Phase 5-6)_
             - **Agent Loop** _(Phase 7)_
@@ -93,6 +122,10 @@ def main():
     else:
         _render_welcome()
 
+    # ── Rules Viewer (shown below main content) ──────────────────────────
+    if st.session_state.rule_engine is not None:
+        _render_rules_viewer()
+
 
 def _load_sample_file(filename: str):
     """Load a sample CSV from the SAMPLE_DATA directory."""
@@ -105,6 +138,27 @@ def _load_sample_file(filename: str):
         st.rerun()
     except Exception as e:
         st.error(f"Error loading sample file: {e}")
+
+
+def _load_rules(yaml_path: str):
+    """Load rules from a YAML file path."""
+    try:
+        engine = RuleEngine(yaml_path=yaml_path)
+        st.session_state.rule_engine = engine
+        st.rerun()
+    except Exception as e:
+        st.error(f"Error loading rules: {e}")
+
+
+def _load_rules_from_buffer(uploaded_file):
+    """Load rules from a Streamlit uploaded file buffer."""
+    try:
+        content = uploaded_file.read().decode("utf-8")
+        engine = RuleEngine(yaml_content=content)
+        st.session_state.rule_engine = engine
+        st.rerun()
+    except Exception as e:
+        st.error(f"Error parsing rules file: {e}")
 
 
 def _process_uploaded_file(uploaded_file):
@@ -125,6 +179,51 @@ def _process_uploaded_file(uploaded_file):
         st.session_state.dataset_info = info
     except Exception as e:
         st.error(f"Error reading file: {e}")
+
+
+def _render_rules_viewer():
+    """Render the validation rules viewer section."""
+    engine = st.session_state.rule_engine
+    rules_summary = engine.summary()
+
+    st.markdown("---")
+    st.header("📜 Validation Rules Viewer")
+
+    # Summary metrics
+    rs1, rs2, rs3, rs4 = st.columns(4)
+    with rs1:
+        st.metric("Total Rules", rules_summary["total_rules"])
+    with rs2:
+        st.metric("Columns Covered", len(rules_summary["columns_covered"]))
+    with rs3:
+        st.metric("High Severity", len(engine.get_rules_by_severity("high")))
+    with rs4:
+        st.metric("Parse Errors", rules_summary["parse_errors"])
+
+    # Rules by type
+    st.markdown("**Rules by Type:**")
+    type_cols = st.columns(len(rules_summary["by_type"]) or 1)
+    for i, (rtype, count) in enumerate(rules_summary["by_type"].items()):
+        with type_cols[i]:
+            st.metric(rtype.replace("_", " ").title(), count)
+
+    # Rules table
+    st.markdown("---")
+    st.subheader("📋 All Rules")
+    rules_df = engine.to_dataframe()
+    # Reorder columns for display
+    display_cols = ["id", "column", "type", "severity", "description"]
+    st.dataframe(rules_df[display_cols], use_container_width=True, hide_index=True)
+
+    # Errors
+    errors = engine.get_errors()
+    if errors:
+        st.warning(f"**{len(errors)} parsing error(s):**")
+        for err in errors:
+            st.error(err)
+
+    # Dataset metadata
+    st.markdown(f"**Dataset:** {engine.get_dataset_name()} | **Description:** {engine.get_dataset_description()}")
 
 
 def _render_welcome():
