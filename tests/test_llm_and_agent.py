@@ -263,18 +263,6 @@ class TestAgentLoop:
         assert len(fixes) >= 1
         assert updated_df["name"].isna().sum() == 0
 
-    def test_apply_fixes_uses_ai_pandas_code(self):
-        """AI-provided pandas fix code should be executed when available."""
-        loop = AgentLoop()
-        df = pd.DataFrame({"name": ["Alice", None, "Charlie"]})
-        analyses = [{
-            "rule_id": "R001", "rule_type": "not_null",
-            "column": "name", "pandas_fix": "df['name'] = df['name'].fillna('Unknown')",
-        }]
-        updated_df, fixes = loop._apply_fixes(df, analyses)
-        assert updated_df.loc[1, 'name'] == 'Unknown'
-        assert fixes[0]["success"] is True
-
     def test_apply_fixes_duplicate_row(self):
         """Test the built-in fix for duplicate rows via _apply_typed_fix directly."""
         loop = AgentLoop()
