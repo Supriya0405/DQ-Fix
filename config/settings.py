@@ -5,8 +5,10 @@ All project-wide settings live here. Single source of truth for configuration.
 """
 
 import os
+
+_BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 from dotenv import load_dotenv
-load_dotenv()  # Load API keys from .env file (gitignored)
+load_dotenv(os.path.join(_BASE_DIR, ".env"))  # Load API keys from .env file (gitignored)
 
 # ─── Paths ──────────────────────────────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

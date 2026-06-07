@@ -157,21 +157,15 @@ def _render_left_panel():
 
     uploaded = st.file_uploader("Upload CSV/Parquet", type=["csv", "parquet"], key="data_upload")
     if uploaded:
-        # Only process if this is a new upload (not already loaded)
-        if st.session_state._last_uploaded_file != uploaded.name:
+        # Process if this is a new/different upload
+        current_id = getattr(uploaded, 'id', None) or uploaded.name
+        last_id = st.session_state.get("_last_upload_id")
+        if last_id != current_id:
             _process_upload(uploaded)
-    elif st.session_state._last_uploaded_file and st.session_state.df is not None:
-        # User cleared the file uploader — keep the data loaded
-        pass
-
-    st.markdown("**📦 Sample Data**")
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("✅ Valid", use_container_width=True):
-            _load_sample("valid_customers.csv")
-    with c2:
-        if st.button("❌ Invalid", use_container_width=True):
-            _load_sample("invalid_customers.csv")
+    elif st.session_state.get("_last_upload_id") and st.session_state.df is not None:
+        pass  # Keep data loaded even if uploader cleared
+    else:
+        st.info("👆 Upload a CSV or Parquet file to get started")
 
     # Dataset preview
     if st.session_state.df is not None:
@@ -183,11 +177,12 @@ def _render_left_panel():
             dtype_df = pd.DataFrame([{"Column": c, "Type": t} for c, t in info["dtypes"].items()])
             st.dataframe(dtype_df, use_container_width=True, hide_index=True)
 
-        # Auto-Generate Rules Button
-        if not st.session_state.rule_engine:
-            if st.button("⚡ Auto-Generate Rules (AI)", use_container_width=True,
-                         help="Let AI analyze your data and generate validation rules automatically"):
-                _auto_generate_rules(st.session_state.df, info.get("file_name", "dataset"))
+        # Auto-Generate Rules Button — ALWAYS shown when data is loaded
+        has_rules = st.session_state.rule_engine is not None
+        btn_label = "🔄 Regenerate Rules with AI" if has_rules else "⚡ Auto-Generate Rules (AI)"
+        if st.button(btn_label, use_container_width=True,
+                     help="AI analyzes YOUR uploaded dataset and generates matching validation rules"):
+            _auto_generate_rules(st.session_state.df, info.get("file_name", "dataset"))
 
     st.markdown("---")
     st.header("📜 Rules")
@@ -219,8 +214,9 @@ def _render_left_panel():
             history = st.session_state.db.get_validation_history(limit=5)
             if history:
                 for h in history:
-                    status_icon = "✅" if h["status"] == "passed" else "❌"
-                    st.markdown(f"{status_icon} **{h['dataset_name']}** — {h['passed_rules']}/{h['total_rules']} passed | {h['timestamp'][:16]}")
+                    status_icon = "✅" if h.get("overall_status", h.get("status")) == "passed" else "❌"
+                    ts = h.get("validation_timestamp", h.get("timestamp", ""))[:16]
+                    st.markdown(f"{status_icon} **{h['dataset_name']}** — {h['passed_rules']}/{h['total_rules']} passed | {ts}")
             else:
                 st.caption("No validation history yet")
         except Exception:
@@ -243,21 +239,8 @@ def _render_left_panel():
     )
     st.session_state.ai_provider = selected_provider
 
-    if SUPPORTED_PROVIDERS[selected_provider]["needs_key"]:
-        api_key = st.text_input(
-            "API Key",
-            value=st.session_state.ai_api_key,
-            type="password",
-            key="_api_key_input",
-            help=f"Enter your {selected_provider.title()} API key",
-        )
-        st.session_state.ai_api_key = api_key
-
-    # Show current status
-    llm = LLMClient(
-        provider=st.session_state.ai_provider,
-        api_key=st.session_state.ai_api_key,
-    )
+    # Show current status (API keys loaded from .env automatically)
+    llm = _get_llm_client()
     if llm.is_available():
         st.success(f"✅ Connected: {llm.get_status()}")
     else:
@@ -270,8 +253,15 @@ def _render_left_panel():
     if st.button("Verify Email", use_container_width=True):
         verifier = EmailVerifier()
         result = verifier.verify(test_email)
+        result["email"] = test_email
         st.session_state.email_results.append(result)
         api_status = verifier.check_api_status()
+        # Save to DB
+        if st.session_state.db:
+            try:
+                st.session_state.db.save_api_validation(test_email, result)
+            except Exception:
+                pass
         st.json({"result": result, "api_status": api_status})
 
     if st.session_state.email_results:
@@ -332,10 +322,12 @@ def _render_center_panel():
                     run_id = st.session_state.db.save_validation_run(
                         st.session_state.dataset_info.get("file_name", "unknown"),
                         len(df), result,
+                        total_columns=len(df.columns),
                     )
                     st.session_state.current_run_id = run_id
-                except Exception:
-                    pass
+                except Exception as e:
+                    import logging
+                    logging.getLogger("dq_database").error(f"Validation save failed: {e}")
         st.rerun()
 
     # Validation Results Table
@@ -345,8 +337,10 @@ def _render_center_panel():
         summary_df = vr.to_dataframe()
 
         def highlight(row):
-            color = "#ffcccc" if row["Status"] == "FAIL" else "#ccffcc"
-            return [f"background-color: {color}"] * len(row)
+            if row["Status"] == "FAIL":
+                return ["background-color: #ffffff; color: #000000; font-weight: bold"] * len(row)
+            else:
+                return ["background-color: #2a2a2a; color: #ffffff"] * len(row)
 
         st.dataframe(summary_df.style.apply(highlight, axis=1),
                       use_container_width=True, hide_index=True)
@@ -354,10 +348,10 @@ def _render_center_panel():
         # Failed Records
         failed = vr.get_failed_results()
         if failed:
-            st.subheader(f"❌ Failed Records ({len(failed)} rules)")
+            st.subheader(f"Failed Records ({len(failed)} rules)")
             for rr in failed:
                 with st.expander(
-                    f"🔴 {rr.rule_id}: {rr.column} → {rr.rule_type} ({rr.failed_count} failures, {rr.severity})",
+                    f"{rr.rule_id}: {rr.column} → {rr.rule_type} ({rr.failed_count} failures, {rr.severity})",
                     expanded=False,
                 ):
                     st.markdown(f"**Description:** {rr.description}")
@@ -388,7 +382,8 @@ def _render_center_panel():
 
         if run_agent:
             progress_bar = st.progress(0, text="Agent loop starting...")
-            loop = AgentLoop(max_iterations=3)
+            llm_for_agent = _get_llm_client()
+            loop = AgentLoop(max_iterations=3, llm=llm_for_agent)
             progress_bar.progress(10, text="Analyzing failures with AI...")
             result = loop.run(df, re.get_rules())
             progress_bar.progress(90, text="Finalizing results...")
@@ -399,6 +394,50 @@ def _render_center_panel():
             for it in result.get("iterations", []):
                 all_analyses.extend(it.get("ai_analyses", []))
             st.session_state.ai_analyses = all_analyses
+
+            # ── Save to Database ──────────────────────────────────────
+            if st.session_state.db:
+                try:
+                    # Save the initial validation run (first iteration)
+                    engine = ValidationEngine()
+                    initial_result = engine.validate(df, re.get_rules())
+                    run_id = st.session_state.db.save_validation_run(
+                        st.session_state.dataset_info.get("file_name", "unknown"),
+                        len(df), initial_result,
+                        total_columns=len(df.columns),
+                    )
+                    st.session_state.current_run_id = run_id
+
+                    # Save each agent iteration
+                    for it in result.get("iterations", []):
+                        st.session_state.db.save_agent_iteration(
+                            run_id=run_id,
+                            iteration=it["iteration"],
+                            status=it.get("status", "unknown"),
+                            passed_rules=it.get("passed_rules", 0),
+                            failed_rules=it.get("failed_rules", 0),
+                            total_failures=it.get("total_failures", 0),
+                            fixes_applied=len(it.get("fixes_applied", [])),
+                            action_taken=f"Iteration {it['iteration']}: {len(it.get('ai_analyses', []))} analyzed, {len(it.get('fixes_applied', []))} fixes applied",
+                            details=it,
+                        )
+
+                    # Save all AI analyses and remediations
+                    for it in result.get("iterations", []):
+                        for analysis in it.get("ai_analyses", []):
+                            analysis["provider"] = st.session_state.get("ai_provider", "fallback")
+                            st.session_state.db.save_ai_analysis(run_id, analysis)
+
+                    # Save API validations if any
+                    for email_res in st.session_state.get("email_results", []):
+                        st.session_state.db.save_api_validation(
+                            email_res.get("email", ""), email_res
+                        )
+
+                except Exception as e:
+                    import logging
+                    logging.getLogger("dq_database").error(f"Agent loop DB save failed: {e}")
+
             progress_bar.progress(100, text=f"Done! {result['total_iterations']} iteration(s) completed")
             import time
             time.sleep(1)
@@ -417,6 +456,101 @@ def _render_center_panel():
                         st.metric("Failed Rules", it_data["failed_rules"])
                     with c3:
                         st.metric("Fixes Applied", len(it_data.get("fixes_applied", [])))
+
+    # ── History Dashboard ───────────────────────────────────────────────
+    st.markdown("---")
+    st.header("📊 Audit History")
+
+    if st.session_state.db:
+        history_tab = st.tabs(["Runs", "AI Analysis", "Remediations", "Agent Loop", "API Results", "Stats"])
+
+        with history_tab[0]:
+            runs = st.session_state.db.get_validation_history(limit=20)
+            if runs:
+                for r in runs:
+                    icon = "✅" if r["overall_status"] == "passed" else "❌"
+                    with st.expander(f"{icon} #{r['run_id']} | {r['dataset_name']} | "
+                                     f"{r['passed_rules']}/{r['total_rules']} passed | {r['validation_timestamp'][:16]}"):
+                        c1, c2, c3, c4 = st.columns(4)
+                        c1.metric("Rows", r["total_rows"])
+                        c2.metric("Columns", r.get("total_columns", "—"))
+                        c3.metric("Passed", r["passed_rules"])
+                        c4.metric("Failed", r["failed_rules"])
+            else:
+                st.info("No validation runs yet.")
+
+        with history_tab[1]:
+            analyses = st.session_state.db.get_ai_analysis_history(limit=30)
+            if analyses:
+                for a in analyses[:15]:
+                    with st.expander(f"🧠 {a.get('rule_id', '')} | {a.get('validation_type', '')} on {a.get('column_name', '')} | "
+                                     f"Run#{a['run_id']} | {a.get('provider', 'fallback')}"):
+                        st.markdown(f"**Root Cause:** {a.get('root_cause', 'N/A')}")
+                        st.markdown(f"**Explanation:** {a.get('explanation', 'N/A')}")
+                        st.markdown(f"**Impact:** {a.get('business_impact', 'N/A')}")
+                        st.markdown(f"**Recommendation:** {a.get('recommendation', 'N/A')}")
+                        st.markdown(f"**Confidence:** {a.get('confidence_score', 0)}% | **Severity:** {a.get('severity', 'N/A')}")
+            else:
+                st.info("No AI analyses yet.")
+
+        with history_tab[2]:
+            remediations = st.session_state.db.get_remediation_history(limit=30)
+            if remediations:
+                for rem in remediations[:15]:
+                    with st.expander(f"🔧 {rem.get('rule_id', '')} | {rem.get('validation_type', '')} on {rem.get('column_name', '')} | "
+                                     f"Run#{rem['run_id']}"):
+                        st.markdown(f"**SQL Fix:**\n```sql\n{rem.get('sql_fix', 'N/A')}\n```")
+                        st.markdown(f"**Pandas Fix:**\n```python\n{rem.get('pandas_fix', 'N/A')}\n```")
+                        applied = "✅ Applied" if rem.get('fix_applied') else "⬜ Not applied"
+                        st.markdown(f"**Status:** {applied} | **Confidence:** {rem.get('confidence_score', 0)}%")
+            else:
+                st.info("No remediations yet.")
+
+        with history_tab[3]:
+            iterations = st.session_state.db.get_agent_iterations(limit=30)
+            if iterations:
+                for it in iterations[:15]:
+                    with st.expander(f"🔄 Run#{it['run_id']} | Iteration {it['iteration_number']} | "
+                                     f"{it.get('validation_status', '')} | {it.get('fixes_applied', 0)} fixes"):
+                        st.markdown(f"**Action:** {it.get('action_taken', 'N/A')}")
+                        c1, c2, c3, c4 = st.columns(4)
+                        c1.metric("Passed", it.get("passed_rules", 0))
+                        c2.metric("Failed", it.get("failed_rules", 0))
+                        c3.metric("Failures", it.get("total_failures", 0))
+                        c4.metric("Fixes", it.get("fixes_applied", 0))
+            else:
+                st.info("No agent iterations yet.")
+
+        with history_tab[4]:
+            api_results = st.session_state.db.get_api_validation_history(limit=30)
+            if api_results:
+                for api in api_results[:15]:
+                    icon = "✅" if api.get("is_valid") else "❌"
+                    st.markdown(f"{icon} **{api['email']}** | Status: {api.get('api_status', 'N/A')} | "
+                                f"Confidence: {api.get('confidence_score', 0)} | {api.get('created_at', '')[:16]}")
+            else:
+                st.info("No API validation results yet.")
+
+        with history_tab[5]:
+            stats = st.session_state.db.get_statistics()
+            if stats:
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("Total Runs", stats.get("validation_runs", 0))
+                c2.metric("Total Rules Checked", stats.get("total_rules_checked", 0))
+                c3.metric("Pass Rate", f"{stats.get('pass_rate', 0)}%")
+                c4.metric("AI Analyses", stats.get("ai_analysis", 0))
+                st.markdown("---")
+                c5, c6, c7 = st.columns(3)
+                c5.metric("Failed Records", stats.get("failed_records", 0))
+                c6.metric("Remediations", stats.get("remediation_suggestions", 0))
+                c7.metric("Agent Iterations", stats.get("agent_iterations", 0))
+                st.markdown("---")
+                if st.button("🗑️ Clear All History", type="secondary"):
+                    st.session_state.db.clear_all_history()
+                    st.success("All history cleared!")
+                    st.rerun()
+            else:
+                st.info("No statistics available.")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -457,11 +591,10 @@ def _render_right_panel():
             # Severity & Confidence badges
             sev = analysis.get("severity", "medium")
             conf = analysis.get("confidence", 0)
-            sev_color = {"high": "🔴", "medium": "🟡", "low": "🟢"}.get(sev, "⚪")
 
             c1, c2, c3 = st.columns(3)
             with c1:
-                st.markdown(f"**{sev_color} Severity:** {sev.upper()}")
+                st.markdown(f"**Severity:** {sev.upper()}")
             with c2:
                 st.markdown(f"**🎯 Confidence:** {conf}/100")
             with c3:
@@ -500,7 +633,10 @@ def _render_right_panel():
             st.markdown(analysis.get("permanent_fix", "N/A"))
 
             if analysis.get("fallback"):
-                st.caption("⚠️ Generated by fallback engine (LLM unavailable)")
+                err = analysis.get("llm_error", "unknown")
+                st.warning(f"⚠️ Fallback used — LLM error: `{err}`")
+            elif analysis.get("provider"):
+                st.caption(f"✅ Generated by {analysis['provider']} / {analysis.get('model', '')}")
 
     # Apply Fix & Download
     st.markdown("---")
@@ -545,12 +681,16 @@ def _process_upload(uploaded_file):
             return
         st.session_state.df = df
         st.session_state.dataset_info = info
+        upload_id = getattr(uploaded_file, 'id', None) or uploaded_file.name
+        st.session_state._last_upload_id = upload_id
         st.session_state._last_uploaded_file = uploaded_file.name
-        # Reset all downstream state for a clean start
+        # Reset ALL downstream state for a clean start
+        st.session_state.rule_engine = None
         st.session_state.validation_result = None
         st.session_state.ai_analyses = []
         st.session_state.agent_result = None
         st.session_state.cleaned_df = None
+        st.success(f"✅ Loaded {info['file_name']} ({info['rows']} rows × {info['columns']} cols)")
         st.rerun()
     except Exception as e:
         st.error(f"Error reading file: {e}")
@@ -563,8 +703,10 @@ def _load_sample(filename):
         df, info = reader.read(path)
         st.session_state.df = df
         st.session_state.dataset_info = info
-        st.session_state._last_uploaded_file = None  # Reset upload tracking
+        st.session_state._last_upload_id = None  # Reset upload tracking
+        st.session_state._last_uploaded_file = None
         # Reset all downstream state for a clean start
+        st.session_state.rule_engine = None
         st.session_state.validation_result = None
         st.session_state.ai_analyses = []
         st.session_state.agent_result = None
@@ -618,6 +760,7 @@ def _run_quick_analysis(vr):
         analysis["rule_type"] = rr.rule_type
         analysis["column"] = rr.column
         analysis["failed_count"] = rr.failed_count
+        analysis["provider"] = st.session_state.get("ai_provider", "fallback")
         analyses.append(analysis)
         # Save to DB
         if st.session_state.db:
@@ -632,10 +775,19 @@ def _run_quick_analysis(vr):
 
 def _get_llm_client() -> LLMClient:
     """Get an LLM client configured with the selected provider and API key."""
-    return LLMClient(
-        provider=st.session_state.get("ai_provider", DEFAULT_PROVIDER),
-        api_key=st.session_state.get("ai_api_key", ""),
-    )
+    provider = st.session_state.get("ai_provider", DEFAULT_PROVIDER)
+    api_key = st.session_state.get("ai_api_key", "")
+    # Fallback: if session state key is empty, reload from settings
+    if not api_key:
+        if provider == "groq":
+            api_key = GROQ_API_KEY
+        elif provider == "openai":
+            api_key = OPENAI_API_KEY
+        if api_key:
+            st.session_state.ai_api_key = api_key
+    import logging
+    logging.getLogger("dq_ai").info(f"_get_llm_client: provider={provider}, key_len={len(api_key)}, key_empty={not api_key}")
+    return LLMClient(provider=provider, api_key=api_key)
 
 
 def _auto_generate_rules(df, dataset_name):

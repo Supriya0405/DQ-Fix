@@ -84,9 +84,14 @@ class LLMClient:
 
         try:
             response = self._call_llm(prompt)
-            return self._parse_analysis_response(response, rule_result)
+            result = self._parse_analysis_response(response, rule_result)
+            result["provider"] = self.provider
+            result["model"] = self.model
+            return result
         except Exception as e:
-            return self._fallback_analysis(rule_result, str(e))
+            import logging
+            logging.getLogger("dq_ai").error(f"LLM call failed for {self.provider}: {type(e).__name__}: {e}")
+            return self._fallback_analysis(rule_result, f"{type(e).__name__}: {e}")
 
     def _build_analysis_prompt(self, rule_result, sample_rows_df, column_info) -> str:
         sample_data = ""
@@ -130,24 +135,51 @@ Respond in EXACTLY this JSON format (no markdown, no code blocks):
 }}"""
 
     def _parse_analysis_response(self, raw_response: str, rule_result) -> dict:
+        import logging
+        logger = logging.getLogger("dq_ai")
+        data = None
+
+        # Strategy 1: Direct parse
         try:
-            cleaned = raw_response.strip()
-            if cleaned.startswith("```"):
-                cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned[3:]
-                if cleaned.endswith("```"):
-                    cleaned = cleaned[:-3]
-                cleaned = cleaned.strip()
-            data = json.loads(cleaned)
+            data = json.loads(raw_response.strip())
         except json.JSONDecodeError:
+            pass
+
+        # Strategy 2: Strip markdown code blocks
+        if data is None:
+            try:
+                cleaned = raw_response.strip()
+                if cleaned.startswith("```"):
+                    # Remove first line (```json, ```JSON, etc.)
+                    cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned[3:]
+                    if cleaned.endswith("```"):
+                        cleaned = cleaned[:-3]
+                    cleaned = cleaned.strip()
+                data = json.loads(cleaned)
+            except json.JSONDecodeError:
+                pass
+
+        # Strategy 3: Extract JSON between first { and last }
+        if data is None:
             start = raw_response.find("{")
-            end = raw_response.rfind("}") + 1
+            end = raw_response.rfind("}")
             if start >= 0 and end > start:
+                json_str = raw_response[start:end+1]
+                # Fix common JSON issues from LLMs
+                import re
+                # Remove trailing commas before } or ]
+                json_str = re.sub(r',\s*([}\]])', r'\1', json_str)
+                # Fix unescaped newlines in string values
+                json_str = re.sub(r'(?<=:)\s*"([^"]*?)\n([^"]*?)"', lambda m: f'"{m.group(1)} {m.group(2)}"', json_str)
                 try:
-                    data = json.loads(raw_response[start:end])
-                except json.JSONDecodeError:
-                    return self._fallback_analysis(rule_result, "JSON parse failed")
-            else:
-                return self._fallback_analysis(rule_result, "No JSON in response")
+                    data = json.loads(json_str)
+                except json.JSONDecodeError as e:
+                    logger.warning(f"JSON parse failed (truncated at 200 chars): {json_str[:200]}... Error: {e}")
+                    return self._fallback_analysis(rule_result, f"JSON parse failed: {e}")
+
+        if data is None:
+            logger.warning(f"No JSON found in response (first 200 chars): {raw_response[:200]}")
+            return self._fallback_analysis(rule_result, "No JSON in response")
 
         return {
             "root_cause": data.get("root_cause", "Unable to determine root cause"),
@@ -174,43 +206,55 @@ Respond in EXACTLY this JSON format (no markdown, no code blocks):
         if not self.is_available():
             return self._fallback_generate_rules(df, dataset_name)
 
-        # Build column summary for the LLM
+        # Build detailed column summary for the LLM
         col_summary = []
         for col in df.columns:
             dtype = str(df[col].dtype)
             nulls = int(df[col].isnull().sum())
+            null_pct = round(nulls / max(1, len(df)) * 100, 1)
             nunique = int(df[col].nunique())
-            sample_vals = df[col].dropna().head(3).tolist()
+            sample_vals = df[col].dropna().head(5).tolist()
+            # For numeric columns, add min/max/mean
+            stats = ""
+            if "int" in dtype or "float" in dtype:
+                if df[col].notna().any():
+                    stats = f", min={df[col].min()}, max={df[col].max()}, mean={round(df[col].mean(),2)}"
             col_summary.append(
-                f"- {col}: dtype={dtype}, nulls={nulls}, unique={nunique}, samples={sample_vals}"
+                f"- {col}: dtype={dtype}, nulls={nulls}({null_pct}%), unique={nunique}{stats}, samples={sample_vals}"
             )
-        col_info = "\n".join(col_summary[:30])  # limit to 30 columns
+        col_info = "\n".join(col_summary[:40])  # limit to 40 columns
 
-        prompt = f"""You are a Data Quality Engineer. Analyze this dataset and generate validation rules in YAML format.
+        prompt = f"""You are an expert Data Quality Engineer. Analyze this EXACT dataset and generate validation rules that PERFECTLY match its columns and data.
 
 DATASET: {dataset_name}
-ROWS: {len(df)}
-COLUMNS ({len(df.columns)}):
+TOTAL ROWS: {len(df)}
+TOTAL COLUMNS: {len(df.columns)}
+
+COLUMN DETAILS (use these EXACT column names in your rules):
 {col_info}
 
-VALID RULE TYPES available:
-not_null, unique, range, regex, email, date, phone, allowed_values, numeric, positive, min_length, max_length, duplicate_row, future_date, date_format, placeholder, missing_threshold, customer_id_pattern, email_domain, currency, country, date_order, age, salary, transaction_amount, outlier, cross_field, business_rule, data_consistency, data_freshness
+IMPORTANT RULES:
+1. Every rule MUST use an EXACT column name from the dataset above
+2. Use the min/max/mean values shown to set realistic range params
+3. Use sample values to determine allowed_values params
+4. Generate 15-25 rules covering the most important columns
+5. Focus on columns that have nulls, outliers, or specific patterns
 
-Generate 15-25 rules that make sense for THIS specific dataset. Choose appropriate rule types based on column names and data types.
+VALID RULE TYPES: not_null, unique, range, regex, email, date, phone, allowed_values, numeric, positive, min_length, max_length, duplicate_row, future_date, date_format, placeholder, missing_threshold, outlier, cross_field, business_rule, data_consistency
 
-Respond with ONLY valid YAML (no markdown, no explanation):
+Respond with ONLY valid YAML (no markdown, no code blocks, no explanation):
 rules:
   - id: R001
-    column: column_name
+    column: exact_column_name_from_dataset
     type: rule_type
-    description: "What this checks"
+    description: "What this checks and why"
     severity: high/medium/low
     params:
       key: value
 """
 
         try:
-            response = self._call_llm(prompt, max_tokens=2048)
+            response = self._call_llm(prompt, max_tokens=4096)
             # Clean up response
             yaml_str = response.strip()
             if yaml_str.startswith("```"):

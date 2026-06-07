@@ -23,10 +23,10 @@ class AgentLoop:
     gets AI fix suggestions, applies fixes, and re-validates.
     """
 
-    def __init__(self, max_iterations: int = MAX_AGENT_ITERATIONS):
+    def __init__(self, max_iterations: int = MAX_AGENT_ITERATIONS, llm=None):
         self.max_iterations = max_iterations
         self.validator = ValidationEngine()
-        self.llm = LLMClient()
+        self.llm = llm or LLMClient()
         self.severity_engine = SeverityEngine()
         self.history: List[dict] = []
         self.current_iteration = 0
