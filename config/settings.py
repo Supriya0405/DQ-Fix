@@ -58,7 +58,7 @@ MAX_AGENT_ITERATIONS = 3  # Maximum fix-retry cycles before stopping
 AGENT_STOP_ON_SUCCESS = True  # Stop immediately when all validations pass
 
 # ─── External API Configuration ─────────────────────────────────────────────
-# Using emailvalidation.io free tier (no API key needed for basic checks)
+# emailvalidation.io — free key at https://app.emailvalidation.io → Dashboard
 EMAIL_API_URL = "https://api.emailvalidation.io/v1/info"
 EMAIL_API_KEY = os.getenv("EMAIL_API_KEY", "")
 
@@ -106,6 +106,6 @@ CONFIDENCE_WEIGHTS = {
 }
 
 # ─── Streamlit UI ──────────────────────────────────────────────────────────
-APP_TITLE = "Data Quality Agent — Auto-Fix Suggestions"
-APP_ICON = "🔧"
+APP_TITLE = "DQ-Fix Agent DE-02"
+APP_ICON = "DQ"
 MAX_ROWS_PREVIEW = 50  # Max rows shown in preview tables
