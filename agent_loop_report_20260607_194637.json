@@ -1,0 +1,1507 @@
+{
+  "timestamp": "2026-06-07T19:46:37.668781",
+  "summary": {
+    "total_rows": 12,
+    "initial_failures": 59,
+    "final_failures": 31,
+    "agent_iterations": 3,
+    "status": "max_reached"
+  },
+  "problems": [
+    {
+      "id": "P001",
+      "rule_id": "R002",
+      "rule_type": "not_null",
+      "column": "name",
+      "severity": "high",
+      "failed_count": 2,
+      "total_rows": 12,
+      "affected_indices": [
+        1,
+        6
+      ],
+      "sample_failures": [
+        {
+          "customer_id": 2,
+          "name": NaN,
+          "email": "bob@example.com",
+          "age": 35,
+          "phone": "+1-555-0102",
+          "signup_date": "2024-02-20",
+          "country": "UK",
+          "salary": 62000
+        },
+        {
+          "customer_id": 7,
+          "name": NaN,
+          "email": NaN,
+          "age": 23,
+          "phone": "+1-555-0107",
+          "signup_date": "2024-07-22",
+          "country": NaN,
+          "salary": 42000
+        }
+      ]
+    },
+    {
+      "id": "P002",
+      "rule_id": "R003",
+      "rule_type": "not_null",
+      "column": "email",
+      "severity": "high",
+      "failed_count": 1,
+      "total_rows": 12,
+      "affected_indices": [
+        6
+      ],
+      "sample_failures": [
+        {
+          "customer_id": 7,
+          "name": NaN,
+          "email": NaN,
+          "age": 23,
+          "phone": "+1-555-0107",
+          "signup_date": "2024-07-22",
+          "country": NaN,
+          "salary": 42000
+        }
+      ]
+    },
+    {
+      "id": "P003",
+      "rule_id": "R004",
+      "rule_type": "not_null",
+      "column": "country",
+      "severity": "medium",
+      "failed_count": 1,
+      "total_rows": 12,
+      "affected_indices": [
+        6
+      ],
+      "sample_failures": [
+        {
+          "customer_id": 7,
+          "name": NaN,
+          "email": NaN,
+          "age": 23,
+          "phone": "+1-555-0107",
+          "signup_date": "2024-07-22",
+          "country": NaN,
+          "salary": 42000
+        }
+      ]
+    },
+    {
+      "id": "P004",
+      "rule_id": "R005",
+      "rule_type": "unique",
+      "column": "customer_id",
+      "severity": "high",
+      "failed_count": 1,
+      "total_rows": 12,
+      "affected_indices": [
+        5
+      ],
+      "sample_failures": [
+        {
+          "customer_id": 5,
+          "name": "Frank Miller",
+          "email": "frank@example",
+          "age": 55,
+          "phone": "+1-555-0106",
+          "signup_date": "2024-06-18",
+          "country": "DE",
+          "salary": 15000000
+        }
+      ]
+    },
+    {
+      "id": "P005",
+      "rule_id": "R006",
+      "rule_type": "range",
+      "column": "age",
+      "severity": "medium",
+      "failed_count": 4,
+      "total_rows": 12,
+      "affected_indices": [
+        2,
+        3,
+        10,
+        11
+      ],
+      "sample_failures": [
+        {
+          "customer_id": 3,
+          "name": "Carol White",
+          "email": "carol-at-example.com",
+          "age": 200,
+          "phone": "+1-555-0103",
+          "signup_date": "2024-13-45",
+          "country": "ZZ",
+          "salary": 75000
+        },
+        {
+          "customer_id": 4,
+          "name": "David Brown",
+          "email": "david@example.com",
+          "age": -5,
+          "phone": "555-INVALID",
+          "signup_date": "not-a-date",
+          "country": "AU",
+          "salary": -5000
+        },
+        {
+          "customer_id": 11,
+          "name": "Kate Adams",
+          "email": "kate@example.com",
+          "age": 150,
+          "phone": "12345",
+          "signup_date": "2024-02-30",
+          "country": "ZZ",
+          "salary": 95000
+        }
+      ]
+    },
+    {
+      "id": "P006",
+      "rule_id": "R008",
+      "rule_type": "email",
+      "column": "email",
+      "severity": "medium",
+      "failed_count": 3,
+      "total_rows": 12,
+      "affected_indices": [
+        2,
+        5,
+        9
+      ],
+      "sample_failures": [
+        {
+          "customer_id": 3,
+          "name": "Carol White",
+          "email": "carol-at-example.com",
+          "age": 200,
+          "phone": "+1-555-0103",
+          "signup_date": "2024-13-45",
+          "country": "ZZ",
+          "salary": 75000
+        },
+        {
+          "customer_id": 5,
+          "name": "Frank Miller",
+          "email": "frank@example",
+          "age": 55,
+          "phone": "+1-555-0106",
+          "signup_date": "2024-06-18",
+          "country": "DE",
+          "salary": 15000000
+        },
+        {
+          "customer_id": 10,
+          "name": "Jack Taylor",
+          "email": "jack@@example.com",
+          "age": 33,
+          "phone": "+1-555-0110",
+          "signup_date": "2024-10-01",
+          "country": "US",
+          "salary": 51000
+        }
+      ]
+    },
+    {
+      "id": "P007",
+      "rule_id": "R009",
+      "rule_type": "date",
+      "column": "signup_date",
+      "severity": "low",
+      "failed_count": 4,
+      "total_rows": 12,
+      "affected_indices": [
+        2,
+        3,
+        7,
+        10
+      ],
+      "sample_failures": [
+        {
+          "customer_id": 3,
+          "name": "Carol White",
+          "email": "carol-at-example.com",
+          "age": 200,
+          "phone": "+1-555-0103",
+          "signup_date": "2024-13-45",
+          "country": "ZZ",
+          "salary": 75000
+        },
+        {
+          "customer_id": 4,
+          "name": "David Brown",
+          "email": "david@example.com",
+          "age": -5,
+          "phone": "555-INVALID",
+          "signup_date": "not-a-date",
+          "country": "AU",
+          "salary": -5000
+        },
+        {
+          "customer_id": 8,
+          "name": "test",
+          "email": "henry@example.com",
+          "age": 39,
+          "phone": NaN,
+          "signup_date": "2024/08/30",
+          "country": "FR",
+          "salary": 58000
+        }
+      ]
+    },
+    {
+      "id": "P008",
+      "rule_id": "R010",
+      "rule_type": "phone",
+      "column": "phone",
+      "severity": "low",
+      "failed_count": 2,
+      "total_rows": 12,
+      "affected_indices": [
+        3,
+        10
+      ],
+      "sample_failures": [
+        {
+          "customer_id": 4,
+          "name": "David Brown",
+          "email": "david@example.com",
+          "age": -5,
+          "phone": "555-INVALID",
+          "signup_date": "not-a-date",
+          "country": "AU",
+          "salary": -5000
+        },
+        {
+          "customer_id": 11,
+          "name": "Kate Adams",
+          "email": "kate@example.com",
+          "age": 150,
+          "phone": "12345",
+          "signup_date": "2024-02-30",
+          "country": "ZZ",
+          "salary": 95000
+        }
+      ]
+    },
+    {
+      "id": "P009",
+      "rule_id": "R011",
+      "rule_type": "allowed_values",
+      "column": "country",
+      "severity": "medium",
+      "failed_count": 3,
+      "total_rows": 12,
+      "affected_indices": [
+        2,
+        10,
+        11
+      ],
+      "sample_failures": [
+        {
+          "customer_id": 3,
+          "name": "Carol White",
+          "email": "carol-at-example.com",
+          "age": 200,
+          "phone": "+1-555-0103",
+          "signup_date": "2024-13-45",
+          "country": "ZZ",
+          "salary": 75000
+        },
+        {
+          "customer_id": 11,
+          "name": "Kate Adams",
+          "email": "kate@example.com",
+          "age": 150,
+          "phone": "12345",
+          "signup_date": "2024-02-30",
+          "country": "ZZ",
+          "salary": 95000
+        },
+        {
+          "customer_id": 12,
+          "name": "TODO",
+          "email": "todo@test.com",
+          "age": 999,
+          "phone": "+1-555-0112",
+          "signup_date": "2028-01-01",
+          "country": "XX",
+          "salary": 0
+        }
+      ]
+    },
+    {
+      "id": "P010",
+      "rule_id": "R013",
+      "rule_type": "positive",
+      "column": "age",
+      "severity": "medium",
+      "failed_count": 1,
+      "total_rows": 12,
+      "affected_indices": [
+        3
+      ],
+      "sample_failures": [
+        {
+          "customer_id": 4,
+          "name": "David Brown",
+          "email": "david@example.com",
+          "age": -5,
+          "phone": "555-INVALID",
+          "signup_date": "not-a-date",
+          "country": "AU",
+          "salary": -5000
+        }
+      ]
+    },
+    {
+      "id": "P011",
+      "rule_id": "R017",
+      "rule_type": "future_date",
+      "column": "signup_date",
+      "severity": "medium",
+      "failed_count": 5,
+      "total_rows": 12,
+      "affected_indices": [
+        2,
+        3,
+        7,
+        10,
+        11
+      ],
+      "sample_failures": [
+        {
+          "customer_id": 3,
+          "name": "Carol White",
+          "email": "carol-at-example.com",
+          "age": 200,
+          "phone": "+1-555-0103",
+          "signup_date": "2024-13-45",
+          "country": "ZZ",
+          "salary": 75000
+        },
+        {
+          "customer_id": 4,
+          "name": "David Brown",
+          "email": "david@example.com",
+          "age": -5,
+          "phone": "555-INVALID",
+          "signup_date": "not-a-date",
+          "country": "AU",
+          "salary": -5000
+        },
+        {
+          "customer_id": 8,
+          "name": "test",
+          "email": "henry@example.com",
+          "age": 39,
+          "phone": NaN,
+          "signup_date": "2024/08/30",
+          "country": "FR",
+          "salary": 58000
+        }
+      ]
+    },
+    {
+      "id": "P012",
+      "rule_id": "R018",
+      "rule_type": "date_format",
+      "column": "signup_date",
+      "severity": "low",
+      "failed_count": 4,
+      "total_rows": 12,
+      "affected_indices": [
+        2,
+        3,
+        7,
+        10
+      ],
+      "sample_failures": [
+        {
+          "customer_id": 3,
+          "name": "Carol White",
+          "email": "carol-at-example.com",
+          "age": 200,
+          "phone": "+1-555-0103",
+          "signup_date": "2024-13-45",
+          "country": "ZZ",
+          "salary": 75000
+        },
+        {
+          "customer_id": 4,
+          "name": "David Brown",
+          "email": "david@example.com",
+          "age": -5,
+          "phone": "555-INVALID",
+          "signup_date": "not-a-date",
+          "country": "AU",
+          "salary": -5000
+        },
+        {
+          "customer_id": 8,
+          "name": "test",
+          "email": "henry@example.com",
+          "age": 39,
+          "phone": NaN,
+          "signup_date": "2024/08/30",
+          "country": "FR",
+          "salary": 58000
+        }
+      ]
+    },
+    {
+      "id": "P013",
+      "rule_id": "R019",
+      "rule_type": "placeholder",
+      "column": "name",
+      "severity": "medium",
+      "failed_count": 2,
+      "total_rows": 12,
+      "affected_indices": [
+        7,
+        11
+      ],
+      "sample_failures": [
+        {
+          "customer_id": 8,
+          "name": "test",
+          "email": "henry@example.com",
+          "age": 39,
+          "phone": NaN,
+          "signup_date": "2024/08/30",
+          "country": "FR",
+          "salary": 58000
+        },
+        {
+          "customer_id": 12,
+          "name": "TODO",
+          "email": "todo@test.com",
+          "age": 999,
+          "phone": "+1-555-0112",
+          "signup_date": "2028-01-01",
+          "country": "XX",
+          "salary": 0
+        }
+      ]
+    },
+    {
+      "id": "P014",
+      "rule_id": "R022",
+      "rule_type": "email_domain",
+      "column": "email",
+      "severity": "medium",
+      "failed_count": 4,
+      "total_rows": 12,
+      "affected_indices": [
+        2,
+        5,
+        9,
+        11
+      ],
+      "sample_failures": [
+        {
+          "customer_id": 3,
+          "name": "Carol White",
+          "email": "carol-at-example.com",
+          "age": 200,
+          "phone": "+1-555-0103",
+          "signup_date": "2024-13-45",
+          "country": "ZZ",
+          "salary": 75000
+        },
+        {
+          "customer_id": 5,
+          "name": "Frank Miller",
+          "email": "frank@example",
+          "age": 55,
+          "phone": "+1-555-0106",
+          "signup_date": "2024-06-18",
+          "country": "DE",
+          "salary": 15000000
+        },
+        {
+          "customer_id": 10,
+          "name": "Jack Taylor",
+          "email": "jack@@example.com",
+          "age": 33,
+          "phone": "+1-555-0110",
+          "signup_date": "2024-10-01",
+          "country": "US",
+          "salary": 51000
+        }
+      ]
+    },
+    {
+      "id": "P015",
+      "rule_id": "R023",
+      "rule_type": "currency",
+      "column": "country",
+      "severity": "medium",
+      "failed_count": 3,
+      "total_rows": 12,
+      "affected_indices": [
+        2,
+        10,
+        11
+      ],
+      "sample_failures": [
+        {
+          "customer_id": 3,
+          "name": "Carol White",
+          "email": "carol-at-example.com",
+          "age": 200,
+          "phone": "+1-555-0103",
+          "signup_date": "2024-13-45",
+          "country": "ZZ",
+          "salary": 75000
+        },
+        {
+          "customer_id": 11,
+          "name": "Kate Adams",
+          "email": "kate@example.com",
+          "age": 150,
+          "phone": "12345",
+          "signup_date": "2024-02-30",
+          "country": "ZZ",
+          "salary": 95000
+        },
+        {
+          "customer_id": 12,
+          "name": "TODO",
+          "email": "todo@test.com",
+          "age": 999,
+          "phone": "+1-555-0112",
+          "signup_date": "2028-01-01",
+          "country": "XX",
+          "salary": 0
+        }
+      ]
+    },
+    {
+      "id": "P016",
+      "rule_id": "R024",
+      "rule_type": "country",
+      "column": "country",
+      "severity": "low",
+      "failed_count": 3,
+      "total_rows": 12,
+      "affected_indices": [
+        2,
+        10,
+        11
+      ],
+      "sample_failures": [
+        {
+          "customer_id": 3,
+          "name": "Carol White",
+          "email": "carol-at-example.com",
+          "age": 200,
+          "phone": "+1-555-0103",
+          "signup_date": "2024-13-45",
+          "country": "ZZ",
+          "salary": 75000
+        },
+        {
+          "customer_id": 11,
+          "name": "Kate Adams",
+          "email": "kate@example.com",
+          "age": 150,
+          "phone": "12345",
+          "signup_date": "2024-02-30",
+          "country": "ZZ",
+          "salary": 95000
+        },
+        {
+          "customer_id": 12,
+          "name": "TODO",
+          "email": "todo@test.com",
+          "age": 999,
+          "phone": "+1-555-0112",
+          "signup_date": "2028-01-01",
+          "country": "XX",
+          "salary": 0
+        }
+      ]
+    },
+    {
+      "id": "P017",
+      "rule_id": "R026",
+      "rule_type": "range",
+      "column": "age",
+      "severity": "medium",
+      "failed_count": 4,
+      "total_rows": 12,
+      "affected_indices": [
+        2,
+        3,
+        10,
+        11
+      ],
+      "sample_failures": [
+        {
+          "customer_id": 3,
+          "name": "Carol White",
+          "email": "carol-at-example.com",
+          "age": 200,
+          "phone": "+1-555-0103",
+          "signup_date": "2024-13-45",
+          "country": "ZZ",
+          "salary": 75000
+        },
+        {
+          "customer_id": 4,
+          "name": "David Brown",
+          "email": "david@example.com",
+          "age": -5,
+          "phone": "555-INVALID",
+          "signup_date": "not-a-date",
+          "country": "AU",
+          "salary": -5000
+        },
+        {
+          "customer_id": 11,
+          "name": "Kate Adams",
+          "email": "kate@example.com",
+          "age": 150,
+          "phone": "12345",
+          "signup_date": "2024-02-30",
+          "country": "ZZ",
+          "salary": 95000
+        }
+      ]
+    },
+    {
+      "id": "P018",
+      "rule_id": "R027",
+      "rule_type": "salary",
+      "column": "age",
+      "severity": "medium",
+      "failed_count": 1,
+      "total_rows": 12,
+      "affected_indices": [
+        3
+      ],
+      "sample_failures": [
+        {
+          "customer_id": 4,
+          "name": "David Brown",
+          "email": "david@example.com",
+          "age": -5,
+          "phone": "555-INVALID",
+          "signup_date": "not-a-date",
+          "country": "AU",
+          "salary": -5000
+        }
+      ]
+    },
+    {
+      "id": "P019",
+      "rule_id": "R028",
+      "rule_type": "transaction_amount",
+      "column": "age",
+      "severity": "high",
+      "failed_count": 1,
+      "total_rows": 12,
+      "affected_indices": [
+        3
+      ],
+      "sample_failures": [
+        {
+          "customer_id": 4,
+          "name": "David Brown",
+          "email": "david@example.com",
+          "age": -5,
+          "phone": "555-INVALID",
+          "signup_date": "not-a-date",
+          "country": "AU",
+          "salary": -5000
+        }
+      ]
+    },
+    {
+      "id": "P020",
+      "rule_id": "R029",
+      "rule_type": "outlier",
+      "column": "age",
+      "severity": "medium",
+      "failed_count": 2,
+      "total_rows": 12,
+      "affected_indices": [
+        2,
+        11
+      ],
+      "sample_failures": [
+        {
+          "customer_id": 3,
+          "name": "Carol White",
+          "email": "carol-at-example.com",
+          "age": 200,
+          "phone": "+1-555-0103",
+          "signup_date": "2024-13-45",
+          "country": "ZZ",
+          "salary": 75000
+        },
+        {
+          "customer_id": 12,
+          "name": "TODO",
+          "email": "todo@test.com",
+          "age": 999,
+          "phone": "+1-555-0112",
+          "signup_date": "2028-01-01",
+          "country": "XX",
+          "salary": 0
+        }
+      ]
+    },
+    {
+      "id": "P021",
+      "rule_id": "R031",
+      "rule_type": "business_rule",
+      "column": "age",
+      "severity": "high",
+      "failed_count": 1,
+      "total_rows": 12,
+      "affected_indices": [
+        3
+      ],
+      "sample_failures": [
+        {
+          "customer_id": 4,
+          "name": "David Brown",
+          "email": "david@example.com",
+          "age": -5,
+          "phone": "555-INVALID",
+          "signup_date": "not-a-date",
+          "country": "AU",
+          "salary": -5000
+        }
+      ]
+    },
+    {
+      "id": "P022",
+      "rule_id": "R033",
+      "rule_type": "data_freshness",
+      "column": "signup_date",
+      "severity": "low",
+      "failed_count": 7,
+      "total_rows": 12,
+      "affected_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        7,
+        10
+      ],
+      "sample_failures": [
+        {
+          "customer_id": 1,
+          "name": "Alice Johnson",
+          "email": "alice@example.com",
+          "age": 28,
+          "phone": "+1-555-0101",
+          "signup_date": "2024-01-15",
+          "country": "US",
+          "salary": 55000
+        },
+        {
+          "customer_id": 2,
+          "name": NaN,
+          "email": "bob@example.com",
+          "age": 35,
+          "phone": "+1-555-0102",
+          "signup_date": "2024-02-20",
+          "country": "UK",
+          "salary": 62000
+        },
+        {
+          "customer_id": 3,
+          "name": "Carol White",
+          "email": "carol-at-example.com",
+          "age": 200,
+          "phone": "+1-555-0103",
+          "signup_date": "2024-13-45",
+          "country": "ZZ",
+          "salary": 75000
+        }
+      ]
+    }
+  ],
+  "solutions": [
+    {
+      "id": "S001",
+      "iteration": 1,
+      "rule_id": "R002",
+      "rule_type": "not_null",
+      "column": "name",
+      "root_cause": "Column 'name' contains 2 null values.",
+      "explanation": "The not_null check on 'name' found 2 issues.",
+      "pandas_fix": "df = df.dropna(subset=['name'])",
+      "confidence": 92,
+      "severity": "high"
+    },
+    {
+      "id": "S002",
+      "iteration": 1,
+      "rule_id": "R003",
+      "rule_type": "not_null",
+      "column": "email",
+      "root_cause": "Column 'email' contains 1 null values.",
+      "explanation": "The not_null check on 'email' found 1 issues.",
+      "pandas_fix": "df = df.dropna(subset=['email'])",
+      "confidence": 94,
+      "severity": "high"
+    },
+    {
+      "id": "S003",
+      "iteration": 1,
+      "rule_id": "R004",
+      "rule_type": "not_null",
+      "column": "country",
+      "root_cause": "Column 'country' contains 1 null values.",
+      "explanation": "The not_null check on 'country' found 1 issues.",
+      "pandas_fix": "df = df.dropna(subset=['country'])",
+      "confidence": 94,
+      "severity": "medium"
+    },
+    {
+      "id": "S004",
+      "iteration": 1,
+      "rule_id": "R005",
+      "rule_type": "unique",
+      "column": "customer_id",
+      "root_cause": "unique validation failed",
+      "explanation": "1 rows failed unique check",
+      "pandas_fix": "# Auto-fix for unique on customer_id",
+      "confidence": 50,
+      "severity": "high"
+    },
+    {
+      "id": "S005",
+      "iteration": 1,
+      "rule_id": "R006",
+      "rule_type": "range",
+      "column": "age",
+      "root_cause": "range validation failed",
+      "explanation": "4 rows failed range check",
+      "pandas_fix": "# Auto-fix for range on age",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S006",
+      "iteration": 1,
+      "rule_id": "R008",
+      "rule_type": "email",
+      "column": "email",
+      "root_cause": "email validation failed",
+      "explanation": "3 rows failed email check",
+      "pandas_fix": "# Auto-fix for email on email",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S007",
+      "iteration": 1,
+      "rule_id": "R009",
+      "rule_type": "date",
+      "column": "signup_date",
+      "root_cause": "date validation failed",
+      "explanation": "4 rows failed date check",
+      "pandas_fix": "# Auto-fix for date on signup_date",
+      "confidence": 50,
+      "severity": "low"
+    },
+    {
+      "id": "S008",
+      "iteration": 1,
+      "rule_id": "R010",
+      "rule_type": "phone",
+      "column": "phone",
+      "root_cause": "phone validation failed",
+      "explanation": "2 rows failed phone check",
+      "pandas_fix": "# Auto-fix for phone on phone",
+      "confidence": 50,
+      "severity": "low"
+    },
+    {
+      "id": "S009",
+      "iteration": 1,
+      "rule_id": "R011",
+      "rule_type": "allowed_values",
+      "column": "country",
+      "root_cause": "allowed_values validation failed",
+      "explanation": "3 rows failed allowed_values check",
+      "pandas_fix": "# Auto-fix for allowed_values on country",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S010",
+      "iteration": 1,
+      "rule_id": "R013",
+      "rule_type": "positive",
+      "column": "age",
+      "root_cause": "positive validation failed",
+      "explanation": "1 rows failed positive check",
+      "pandas_fix": "# Auto-fix for positive on age",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S011",
+      "iteration": 1,
+      "rule_id": "R017",
+      "rule_type": "future_date",
+      "column": "signup_date",
+      "root_cause": "future_date validation failed",
+      "explanation": "5 rows failed future_date check",
+      "pandas_fix": "# Auto-fix for future_date on signup_date",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S012",
+      "iteration": 1,
+      "rule_id": "R018",
+      "rule_type": "date_format",
+      "column": "signup_date",
+      "root_cause": "date_format validation failed",
+      "explanation": "4 rows failed date_format check",
+      "pandas_fix": "# Auto-fix for date_format on signup_date",
+      "confidence": 50,
+      "severity": "low"
+    },
+    {
+      "id": "S013",
+      "iteration": 1,
+      "rule_id": "R019",
+      "rule_type": "placeholder",
+      "column": "name",
+      "root_cause": "placeholder validation failed",
+      "explanation": "2 rows failed placeholder check",
+      "pandas_fix": "# Auto-fix for placeholder on name",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S014",
+      "iteration": 1,
+      "rule_id": "R022",
+      "rule_type": "email_domain",
+      "column": "email",
+      "root_cause": "email_domain validation failed",
+      "explanation": "4 rows failed email_domain check",
+      "pandas_fix": "# Auto-fix for email_domain on email",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S015",
+      "iteration": 1,
+      "rule_id": "R023",
+      "rule_type": "currency",
+      "column": "country",
+      "root_cause": "currency validation failed",
+      "explanation": "3 rows failed currency check",
+      "pandas_fix": "# Auto-fix for currency on country",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S016",
+      "iteration": 1,
+      "rule_id": "R024",
+      "rule_type": "country",
+      "column": "country",
+      "root_cause": "country validation failed",
+      "explanation": "3 rows failed country check",
+      "pandas_fix": "# Auto-fix for country on country",
+      "confidence": 50,
+      "severity": "low"
+    },
+    {
+      "id": "S017",
+      "iteration": 1,
+      "rule_id": "R026",
+      "rule_type": "range",
+      "column": "age",
+      "root_cause": "range validation failed",
+      "explanation": "4 rows failed range check",
+      "pandas_fix": "# Auto-fix for range on age",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S018",
+      "iteration": 1,
+      "rule_id": "R027",
+      "rule_type": "salary",
+      "column": "age",
+      "root_cause": "salary validation failed",
+      "explanation": "1 rows failed salary check",
+      "pandas_fix": "# Auto-fix for salary on age",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S019",
+      "iteration": 1,
+      "rule_id": "R028",
+      "rule_type": "transaction_amount",
+      "column": "age",
+      "root_cause": "transaction_amount validation failed",
+      "explanation": "1 rows failed transaction_amount check",
+      "pandas_fix": "# Auto-fix for transaction_amount on age",
+      "confidence": 50,
+      "severity": "high"
+    },
+    {
+      "id": "S020",
+      "iteration": 1,
+      "rule_id": "R029",
+      "rule_type": "outlier",
+      "column": "age",
+      "root_cause": "outlier validation failed",
+      "explanation": "2 rows failed outlier check",
+      "pandas_fix": "# Auto-fix for outlier on age",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S021",
+      "iteration": 1,
+      "rule_id": "R031",
+      "rule_type": "business_rule",
+      "column": "age",
+      "root_cause": "business_rule validation failed",
+      "explanation": "1 rows failed business_rule check",
+      "pandas_fix": "# Auto-fix for business_rule on age",
+      "confidence": 50,
+      "severity": "high"
+    },
+    {
+      "id": "S022",
+      "iteration": 1,
+      "rule_id": "R033",
+      "rule_type": "data_freshness",
+      "column": "signup_date",
+      "root_cause": "data_freshness validation failed",
+      "explanation": "7 rows failed data_freshness check",
+      "pandas_fix": "# Auto-fix for data_freshness on signup_date",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S023",
+      "iteration": 2,
+      "rule_id": "R002",
+      "rule_type": "not_null",
+      "column": "name",
+      "root_cause": "Column 'name' contains 2 null values.",
+      "explanation": "The not_null check on 'name' found 2 issues.",
+      "pandas_fix": "df = df.dropna(subset=['name'])",
+      "confidence": 92,
+      "severity": "high"
+    },
+    {
+      "id": "S024",
+      "iteration": 2,
+      "rule_id": "R003",
+      "rule_type": "not_null",
+      "column": "email",
+      "root_cause": "Column 'email' contains 3 null values.",
+      "explanation": "The not_null check on 'email' found 3 issues.",
+      "pandas_fix": "df = df.dropna(subset=['email'])",
+      "confidence": 89,
+      "severity": "high"
+    },
+    {
+      "id": "S025",
+      "iteration": 2,
+      "rule_id": "R006",
+      "rule_type": "range",
+      "column": "age",
+      "root_cause": "Column 'age' has values outside expected range.",
+      "explanation": "The range check on 'age' found 4 issues.",
+      "pandas_fix": "df.loc[(df['age'] < 0) | (df['age'] > 120), 'age'] = None",
+      "confidence": 85,
+      "severity": "medium"
+    },
+    {
+      "id": "S026",
+      "iteration": 2,
+      "rule_id": "R010",
+      "rule_type": "phone",
+      "column": "phone",
+      "root_cause": "phone validation failed",
+      "explanation": "2 rows failed phone check",
+      "pandas_fix": "# Auto-fix for phone on phone",
+      "confidence": 50,
+      "severity": "low"
+    },
+    {
+      "id": "S027",
+      "iteration": 2,
+      "rule_id": "R011",
+      "rule_type": "allowed_values",
+      "column": "country",
+      "root_cause": "allowed_values validation failed",
+      "explanation": "3 rows failed allowed_values check",
+      "pandas_fix": "# Auto-fix for allowed_values on country",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S028",
+      "iteration": 2,
+      "rule_id": "R013",
+      "rule_type": "positive",
+      "column": "age",
+      "root_cause": "positive validation failed",
+      "explanation": "1 rows failed positive check",
+      "pandas_fix": "# Auto-fix for positive on age",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S029",
+      "iteration": 2,
+      "rule_id": "R017",
+      "rule_type": "future_date",
+      "column": "signup_date",
+      "root_cause": "future_date validation failed",
+      "explanation": "1 rows failed future_date check",
+      "pandas_fix": "# Auto-fix for future_date on signup_date",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S030",
+      "iteration": 2,
+      "rule_id": "R020",
+      "rule_type": "missing_threshold",
+      "column": "email",
+      "root_cause": "missing_threshold validation failed",
+      "explanation": "3 rows failed missing_threshold check",
+      "pandas_fix": "# Auto-fix for missing_threshold on email",
+      "confidence": 50,
+      "severity": "high"
+    },
+    {
+      "id": "S031",
+      "iteration": 2,
+      "rule_id": "R021",
+      "rule_type": "customer_id_pattern",
+      "column": "customer_id",
+      "root_cause": "customer_id_pattern validation failed",
+      "explanation": "1 rows failed customer_id_pattern check",
+      "pandas_fix": "# Auto-fix for customer_id_pattern on customer_id",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S032",
+      "iteration": 2,
+      "rule_id": "R022",
+      "rule_type": "email_domain",
+      "column": "email",
+      "root_cause": "email_domain validation failed",
+      "explanation": "1 rows failed email_domain check",
+      "pandas_fix": "# Auto-fix for email_domain on email",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S033",
+      "iteration": 2,
+      "rule_id": "R023",
+      "rule_type": "currency",
+      "column": "country",
+      "root_cause": "currency validation failed",
+      "explanation": "3 rows failed currency check",
+      "pandas_fix": "# Auto-fix for currency on country",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S034",
+      "iteration": 2,
+      "rule_id": "R024",
+      "rule_type": "country",
+      "column": "country",
+      "root_cause": "country validation failed",
+      "explanation": "3 rows failed country check",
+      "pandas_fix": "# Auto-fix for country on country",
+      "confidence": 50,
+      "severity": "low"
+    },
+    {
+      "id": "S035",
+      "iteration": 2,
+      "rule_id": "R026",
+      "rule_type": "range",
+      "column": "age",
+      "root_cause": "range validation failed",
+      "explanation": "4 rows failed range check",
+      "pandas_fix": "# Auto-fix for range on age",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S036",
+      "iteration": 2,
+      "rule_id": "R027",
+      "rule_type": "salary",
+      "column": "age",
+      "root_cause": "salary validation failed",
+      "explanation": "1 rows failed salary check",
+      "pandas_fix": "# Auto-fix for salary on age",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S037",
+      "iteration": 2,
+      "rule_id": "R028",
+      "rule_type": "transaction_amount",
+      "column": "age",
+      "root_cause": "transaction_amount validation failed",
+      "explanation": "1 rows failed transaction_amount check",
+      "pandas_fix": "# Auto-fix for transaction_amount on age",
+      "confidence": 50,
+      "severity": "high"
+    },
+    {
+      "id": "S038",
+      "iteration": 2,
+      "rule_id": "R029",
+      "rule_type": "outlier",
+      "column": "age",
+      "root_cause": "outlier validation failed",
+      "explanation": "2 rows failed outlier check",
+      "pandas_fix": "# Auto-fix for outlier on age",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S039",
+      "iteration": 2,
+      "rule_id": "R031",
+      "rule_type": "business_rule",
+      "column": "age",
+      "root_cause": "business_rule validation failed",
+      "explanation": "1 rows failed business_rule check",
+      "pandas_fix": "# Auto-fix for business_rule on age",
+      "confidence": 50,
+      "severity": "high"
+    },
+    {
+      "id": "S040",
+      "iteration": 2,
+      "rule_id": "R033",
+      "rule_type": "data_freshness",
+      "column": "signup_date",
+      "root_cause": "data_freshness validation failed",
+      "explanation": "3 rows failed data_freshness check",
+      "pandas_fix": "# Auto-fix for data_freshness on signup_date",
+      "confidence": 50,
+      "severity": "low"
+    },
+    {
+      "id": "S041",
+      "iteration": 3,
+      "rule_id": "R006",
+      "rule_type": "range",
+      "column": "age",
+      "root_cause": "Column 'age' has values outside expected range.",
+      "explanation": "The range check on 'age' found 4 issues.",
+      "pandas_fix": "df.loc[(df['age'] < 0) | (df['age'] > 120), 'age'] = None",
+      "confidence": 85,
+      "severity": "medium"
+    },
+    {
+      "id": "S042",
+      "iteration": 3,
+      "rule_id": "R010",
+      "rule_type": "phone",
+      "column": "phone",
+      "root_cause": "Column 'phone' failed phone with 2 failures.",
+      "explanation": "The phone check on 'phone' found 2 issues.",
+      "pandas_fix": "# Manual review needed for phone",
+      "confidence": 88,
+      "severity": "low"
+    },
+    {
+      "id": "S043",
+      "iteration": 3,
+      "rule_id": "R011",
+      "rule_type": "allowed_values",
+      "column": "country",
+      "root_cause": "Column 'country' failed allowed_values with 3 failures.",
+      "explanation": "The allowed_values check on 'country' found 3 issues.",
+      "pandas_fix": "# Manual review needed for country",
+      "confidence": 89,
+      "severity": "medium"
+    },
+    {
+      "id": "S044",
+      "iteration": 3,
+      "rule_id": "R013",
+      "rule_type": "positive",
+      "column": "age",
+      "root_cause": "positive validation failed",
+      "explanation": "1 rows failed positive check",
+      "pandas_fix": "# Auto-fix for positive on age",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S045",
+      "iteration": 3,
+      "rule_id": "R017",
+      "rule_type": "future_date",
+      "column": "signup_date",
+      "root_cause": "future_date validation failed",
+      "explanation": "1 rows failed future_date check",
+      "pandas_fix": "# Auto-fix for future_date on signup_date",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S046",
+      "iteration": 3,
+      "rule_id": "R021",
+      "rule_type": "customer_id_pattern",
+      "column": "customer_id",
+      "root_cause": "customer_id_pattern validation failed",
+      "explanation": "1 rows failed customer_id_pattern check",
+      "pandas_fix": "# Auto-fix for customer_id_pattern on customer_id",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S047",
+      "iteration": 3,
+      "rule_id": "R022",
+      "rule_type": "email_domain",
+      "column": "email",
+      "root_cause": "email_domain validation failed",
+      "explanation": "1 rows failed email_domain check",
+      "pandas_fix": "# Auto-fix for email_domain on email",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S048",
+      "iteration": 3,
+      "rule_id": "R023",
+      "rule_type": "currency",
+      "column": "country",
+      "root_cause": "currency validation failed",
+      "explanation": "3 rows failed currency check",
+      "pandas_fix": "# Auto-fix for currency on country",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S049",
+      "iteration": 3,
+      "rule_id": "R024",
+      "rule_type": "country",
+      "column": "country",
+      "root_cause": "country validation failed",
+      "explanation": "3 rows failed country check",
+      "pandas_fix": "# Auto-fix for country on country",
+      "confidence": 50,
+      "severity": "low"
+    },
+    {
+      "id": "S050",
+      "iteration": 3,
+      "rule_id": "R026",
+      "rule_type": "range",
+      "column": "age",
+      "root_cause": "range validation failed",
+      "explanation": "4 rows failed range check",
+      "pandas_fix": "# Auto-fix for range on age",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S051",
+      "iteration": 3,
+      "rule_id": "R027",
+      "rule_type": "salary",
+      "column": "age",
+      "root_cause": "salary validation failed",
+      "explanation": "1 rows failed salary check",
+      "pandas_fix": "# Auto-fix for salary on age",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S052",
+      "iteration": 3,
+      "rule_id": "R028",
+      "rule_type": "transaction_amount",
+      "column": "age",
+      "root_cause": "transaction_amount validation failed",
+      "explanation": "1 rows failed transaction_amount check",
+      "pandas_fix": "# Auto-fix for transaction_amount on age",
+      "confidence": 50,
+      "severity": "high"
+    },
+    {
+      "id": "S053",
+      "iteration": 3,
+      "rule_id": "R029",
+      "rule_type": "outlier",
+      "column": "age",
+      "root_cause": "outlier validation failed",
+      "explanation": "2 rows failed outlier check",
+      "pandas_fix": "# Auto-fix for outlier on age",
+      "confidence": 50,
+      "severity": "medium"
+    },
+    {
+      "id": "S054",
+      "iteration": 3,
+      "rule_id": "R031",
+      "rule_type": "business_rule",
+      "column": "age",
+      "root_cause": "business_rule validation failed",
+      "explanation": "1 rows failed business_rule check",
+      "pandas_fix": "# Auto-fix for business_rule on age",
+      "confidence": 50,
+      "severity": "high"
+    },
+    {
+      "id": "S055",
+      "iteration": 3,
+      "rule_id": "R033",
+      "rule_type": "data_freshness",
+      "column": "signup_date",
+      "root_cause": "data_freshness validation failed",
+      "explanation": "3 rows failed data_freshness check",
+      "pandas_fix": "# Auto-fix for data_freshness on signup_date",
+      "confidence": 50,
+      "severity": "low"
+    }
+  ],
+  "statistics": {
+    "total_problems": 22,
+    "total_solutions": 55,
+    "high_severity": 5,
+    "medium_severity": 12,
+    "low_severity": 5,
+    "average_confidence": 56.50909090909091
+  }
+}
