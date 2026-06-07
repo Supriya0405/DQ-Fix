@@ -14,6 +14,7 @@ from src.rules.rule_engine import ValidationRule
 from src.validators.result_models import ValidationResult
 from src.ai.llm_client import LLMClient
 from src.ai.severity_engine import SeverityEngine
+from src.fixer.auto_fixer import AutoFixer
 from config.settings import MAX_AGENT_ITERATIONS
 
 
@@ -77,9 +78,8 @@ class AgentLoop:
 
             # Step 3: Analyze failures with LLM (or fallback)
             failed_results = result.get_failed_results()
-            # Only analyze top 3 failures per iteration for speed
             llm_available = self.llm.is_available()
-            for rule_result in failed_results[:3]:
+            for rule_result in failed_results:
                 analysis = self.llm.analyze_failure(
                     rule_result,
                     sample_rows_df=rule_result.failed_samples,
@@ -102,24 +102,8 @@ class AgentLoop:
                 analysis["failed_count"] = rule_result.failed_count
                 iteration_data["ai_analyses"].append(analysis)
 
-            # Also add rule-type-based fixes for remaining failures not analyzed
-            for rule_result in failed_results[3:]:
-                iteration_data["ai_analyses"].append({
-                    "rule_id": rule_result.rule_id,
-                    "rule_type": rule_result.rule_type,
-                    "column": rule_result.column,
-                    "failed_count": rule_result.failed_count,
-                    "pandas_fix": f"# Auto-fix for {rule_result.rule_type} on {rule_result.column}",
-                    "root_cause": f"{rule_result.rule_type} validation failed",
-                    "explanation": f"{rule_result.failed_count} rows failed {rule_result.rule_type} check",
-                    "severity": self.severity_engine.calculate_severity(
-                        rule_result.rule_type, rule_result.failed_count,
-                        rule_result.total_rows, rule_result.severity),
-                    "confidence": 50,
-                })
-
             # Step 4: Apply fixes
-            fixes_applied = self._apply_fixes(current_df, iteration_data["ai_analyses"])
+            current_df, fixes_applied = self._apply_fixes(current_df, iteration_data["ai_analyses"])
             iteration_data["fixes_applied"] = fixes_applied
             iteration_data["status"] = "fixes_applied" if fixes_applied else "no_fixes"
 
@@ -138,57 +122,71 @@ class AgentLoop:
             "history": self.history,
         }
 
-    def _apply_fixes(self, df: pd.DataFrame, analyses: List[dict]) -> List[dict]:
-        """Apply Pandas-based fixes from AI analyses."""
+    def _apply_fixes(self, df: pd.DataFrame, analyses: List[dict]):
+        """Apply Pandas-based fixes from AI analyses and fallback typed fixes."""
         applied = []
+        fixer = AutoFixer()
+        current_df = df
+
         for analysis in analyses:
             pandas_fix = analysis.get("pandas_fix", "")
             rule_type = analysis.get("rule_type", "")
             column = analysis.get("column", "")
 
-            if not pandas_fix or column not in df.columns:
+            if not pandas_fix or (column not in current_df.columns and column != "_all"):
                 continue
 
-            try:
-                # Apply rule-type-specific fixes
-                fix_applied = self._apply_typed_fix(df, rule_type, column)
-                if fix_applied:
-                    applied.append({
-                        "rule_id": analysis.get("rule_id"),
-                        "column": column,
-                        "rule_type": rule_type,
-                        "fix_description": fix_applied,
-                        "success": True,
-                    })
-            except Exception as e:
-                applied.append({
-                    "rule_id": analysis.get("rule_id"),
-                    "column": column,
-                    "rule_type": rule_type,
-                    "fix_description": f"Fix failed: {e}",
-                    "success": False,
-                })
+            success = False
+            fix_description = pandas_fix.strip()
 
-        return applied
+            try:
+                # Prefer AI-generated pandas fix code when available.
+                if pandas_fix and "df" in pandas_fix:
+                    updated_df = fixer.apply_pandas_fix(current_df, pandas_fix)
+                    if not updated_df.equals(current_df):
+                        current_df = updated_df
+                        success = True
+                # Fallback to typed fix if AI code did not modify the DataFrame.
+                if not success:
+                    typed_fix = self._apply_typed_fix(current_df, rule_type, column)
+                    if typed_fix and "No automatic fix available" not in typed_fix:
+                        success = True
+                        fix_description = typed_fix
+            except Exception as e:
+                success = False
+                fix_description = f"Fix failed: {e}"
+
+            applied.append({
+                "rule_id": analysis.get("rule_id"),
+                "column": column,
+                "rule_type": rule_type,
+                "fix_description": fix_description,
+                "success": success,
+            })
+
+        return current_df, applied
 
     def _apply_typed_fix(self, df: pd.DataFrame, rule_type: str, column: str) -> str:
         """Apply a typed fix based on the validation rule type."""
         if rule_type == "not_null":
             if df[column].dtype in ("int64", "float64"):
                 median_val = df[column].median()
-                df[column].fillna(median_val, inplace=True)
+                df[column] = df[column].fillna(median_val)
                 return f"Filled nulls with median ({median_val})"
             else:
                 mode_val = df[column].mode().iloc[0] if not df[column].mode().empty else "Unknown"
-                df[column].fillna(mode_val, inplace=True)
+                df[column] = df[column].fillna(mode_val)
                 # Also fill empty strings
-                df.loc[df[column].astype(str).str.strip() == "", column] = mode_val
+                empty_mask = df[column].astype(str).str.strip() == ""
+                if empty_mask.any():
+                    df.loc[empty_mask, column] = mode_val
                 return f"Filled nulls/empty with mode ('{mode_val}')"
 
         elif rule_type == "unique":
             # Keep first occurrence, mark duplicates
             dup_mask = df[column].duplicated(keep="first")
             if dup_mask.any():
+                df[column] = df[column].astype(object)
                 df.loc[dup_mask, column] = df.loc[dup_mask, column].astype(str) + "_dup"
                 return f"Appended '_dup' suffix to {dup_mask.sum()} duplicates"
 
@@ -205,18 +203,20 @@ class AgentLoop:
         elif rule_type == "email":
             # Try to fix common email issues
             col = df[column].astype(str)
-            # Replace - with . in domain part
-            fixed = col.str.replace(r"([^@]+)@(.+)", lambda m: f"{m.group(1)}@{m.group(2)}", regex=True)
             invalid = ~col.str.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", na=False)
             df.loc[invalid & self._non_null_mask(df[column]), column] = None
             return f"Set {invalid.sum()} invalid emails to null"
 
         elif rule_type in ("date", "date_format", "future_date"):
             parsed = pd.to_datetime(df[column], errors="coerce")
-            invalid = parsed.isna() & self._non_null_mask(df[column])
+            valid = parsed.notna()
+            if valid.any():
+                df.loc[valid, column] = parsed.loc[valid].dt.strftime("%Y-%m-%d")
+            invalid = ~valid & self._non_null_mask(df[column])
             if invalid.any():
-                df.loc[invalid, column] = parsed.loc[invalid].dt.strftime("%Y-%m-%d")
-                return f"Parsed {invalid.sum()} dates to standard format"
+                df.loc[invalid, column] = None
+                return f"Standardized {valid.sum()} dates and cleared {invalid.sum()} invalid ones"
+            return "Standardized dates"
 
         elif rule_type == "placeholder":
             placeholders = {"N/A", "NA", "null", "none", "TODO", "TBD", "XXX", "test", "dummy", "placeholder", "-", "."}
