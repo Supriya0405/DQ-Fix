@@ -145,4 +145,4 @@ All settings are in `config/settings.py`:
 
 ## License
 
-Hackathon project — for demonstration purposes.
+Owned by Supriya@2026
