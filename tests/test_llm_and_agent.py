@@ -252,21 +252,21 @@ class TestAgentLoop:
         assert status["max_iterations"] == 3
 
     def test_apply_fixes_not_null(self):
-        """Test the built-in fix for not_null."""
+        """Test the built-in fix for not_null with fallback if AI code is not executable."""
         loop = AgentLoop()
         df = pd.DataFrame({"name": ["Alice", None, "Charlie"]})
         analyses = [{
             "rule_id": "R001", "rule_type": "not_null",
             "column": "name", "pandas_fix": "fill nulls",
         }]
-        fixes = loop._apply_fixes(df, analyses)
+        updated_df, fixes = loop._apply_fixes(df, analyses)
         assert len(fixes) >= 1
+        assert updated_df["name"].isna().sum() == 0
 
     def test_apply_fixes_duplicate_row(self):
         """Test the built-in fix for duplicate rows via _apply_typed_fix directly."""
         loop = AgentLoop()
         df = pd.DataFrame({"a": [1, 1, 2], "b": ["x", "x", "y"]})
-        # Call _apply_typed_fix directly since _apply_fixes skips non-column names
         result = loop._apply_typed_fix(df, "duplicate_row", "_all")
         assert "Removed" in result or "duplicate" in result.lower()
 
@@ -278,8 +278,9 @@ class TestAgentLoop:
             "rule_id": "R001", "rule_type": "placeholder",
             "column": "name", "pandas_fix": "remove placeholders",
         }]
-        fixes = loop._apply_fixes(df, analyses)
+        updated_df, fixes = loop._apply_fixes(df, analyses)
         assert len(fixes) >= 1
+        assert updated_df["name"].isna().sum() == 2
 
 
 # ═══════════════════════════════════════════════════════════════════════════

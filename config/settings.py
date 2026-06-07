@@ -106,6 +106,6 @@ CONFIDENCE_WEIGHTS = {
 }
 
 # ─── Streamlit UI ──────────────────────────────────────────────────────────
-APP_TITLE = "DQ-Fix Agent DE-02"
+APP_TITLE = "DQ-Fix Agent"
 APP_ICON = "DQ"
 MAX_ROWS_PREVIEW = 50  # Max rows shown in preview tables

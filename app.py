@@ -96,7 +96,7 @@ def _render_app_header():
 
     st.markdown(
         header_html(
-            title="DQ-Fix Agent DE-02",
+            title="DQ-Fix Agent",
             agent_status=agent_status,
             iteration=iteration,
             dataset_name=dataset_name,
