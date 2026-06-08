@@ -29,6 +29,20 @@ https://www.loom.com/share/f3ac41243f184808b31a1ec2fa0d22f4
 https://github.com/Supriya0405/DQ-Fix
 
 ---
+#Screenshots:
+<img width="1920" height="1080" alt="Screenshot 2026-06-08 102130" src="https://github.com/user-attachments/assets/d0e3dcba-7e44-4d0f-9e25-ffa875d450e6" />
+
+<img width="1920" height="1080" alt="Screenshot 2026-06-08 102202" src="https://github.com/user-attachments/assets/6fa39db6-4398-4b40-bd56-0eae7344839f" />
+
+<img width="1920" height="1080" alt="Screenshot 2026-06-08 102202" src="https://github.com/user-attachments/assets/48c3bf40-90c7-4084-846d-0f673d52b613" />
+<img width="1920" height="1080" alt="Screenshot 2026-06-08 102212" src="https://github.com/user-attachments/assets/82bdee0e-4d31-4797-adc7-9de04104421a" />
+<img width="1920" height="1080" alt="Screenshot 2026-06-08 102225" src="https://github.com/user-attachments/assets/ddb79add-b8a2-4d34-80c3-f40b3d5df5e2" />
+<img width="1920" height="1080" alt="Screenshot 2026-06-08 102239" src="https://github.com/user-attachments/assets/89770ba4-6384-4753-80a5-d45e0fdc2a95" />
+<img width="1920" height="1080" alt="Screenshot 2026-06-08 102239" src="https://github.com/user-attachments/assets/0f768c82-96d4-45f0-b573-c8b514648c74" />
+<img width="1920" height="1080" alt="Screenshot 2026-06-08 102251" src="https://github.com/user-attachments/assets/fd37d4d2-26c8-4e38-8107-1a8402a60965" />
+<img width="1920" height="1080" alt="Screenshot 2026-06-08 102251" src="https://github.com/user-attachments/assets/e4f19f6a-9550-4425-9561-cbc32423434a" />
+<img width="1920" height="1080" alt="Screenshot 2026-06-08 102258" src="https://github.com/user-attachments/assets/5cf05c45-3ddd-4e90-9575-4b8a691cb75a" />
+
 
 # 📌 Overview
 
