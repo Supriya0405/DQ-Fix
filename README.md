@@ -28,6 +28,11 @@ https://www.loom.com/share/f3ac41243f184808b31a1ec2fa0d22f4
 
 https://github.com/Supriya0405/DQ-Fix
 
+## AI Reference link: 
+
+https://chatgpt.com/share/6a2657b1-0308-8323-98a1-5fa89828ced6
+
+
 ---
 #Screenshots:
 <img width="1920" height="1080" alt="Screenshot 2026-06-08 102130" src="https://github.com/user-attachments/assets/484836e0-4d3b-47a9-aacb-6bad4c13e26f" />
