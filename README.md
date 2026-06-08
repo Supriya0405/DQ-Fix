@@ -1,148 +1,308 @@
-# Data Quality Agent with Auto-Fix Suggestions (DQ-FIX)
+# 🚀 DQ-FIX: Data Quality Agent with Auto-Fix Suggestions
 
-An intelligent data quality validation system that automatically detects, analyzes, and suggests fixes for data quality issues using AI/LLM integration. Built for hackathon demonstration.
+##  Team Information
 
-## Features
+### Team Name
 
-- **30 Validation Types** — not_null, unique, range, regex, email, date, phone, allowed_values, numeric, positive, min/max_length, duplicate_row, future_date, placeholder, missing_threshold, outlier, cross_field, business_rule, data_consistency, data_freshness, and more
-- **Multi-Provider AI** — Ollama (local/free), Groq (free API), OpenAI (paid)
-- **Agent Loop** — Autonomous validate → analyze → fix → re-validate cycle (max 3 iterations)
-- **AI-Powered Rule Generation** — Upload any CSV and LLM auto-generates validation rules
-- **SQLite Persistence** — 7-table audit database tracking all validation history
-- **Streamlit Dashboard** — 3-panel interactive UI with real-time results and audit history
-- **External API Validation** — Email verification via emailvalidation.io
-- **Severity & Confidence Scoring** — Calculated based on failure rate, rule type, and LLM availability
+SmartRemediate
 
-## Tech Stack
+### Team Number
+Team27
 
-| Layer | Technology |
-|-------|-----------|
-| Language | Python 3.10+ |
-| Data Processing | Pandas, PyArrow |
-| Dashboard | Streamlit |
-| Database | SQLite3 (7 tables, WAL mode) |
-| AI/LLM | Ollama, Groq, OpenAI APIs |
-| Config | YAML, python-dotenv |
-| Testing | Pytest (122 tests) |
+### Team Members
 
-## Project Structure
+* Supriya DV
+* SURIYA A
+* SUJAN ST
+* SUMITHA R
 
-```
-DQ-FIX/
-├── app.py                          # Streamlit dashboard (main entry point)
-├── config/
-│   └── settings.py                 # All configuration settings
-├── src/
-│   ├── agent/
-│   │   └── agent_loop.py           # Autonomous fix-revalidate loop
-│   ├── ai/
-│   │   ├── llm_client.py           # Multi-provider LLM integration
-│   │   └── severity_engine.py      # Severity & confidence scoring
-│   ├── api/
-│   │   └── email_verifier.py       # External email validation API
-│   ├── database/
-│   │   └── db_manager.py           # SQLite 7-table persistence
-│   ├── fixer/
-│   │   └── auto_fixer.py           # Auto-fix suggestions
-│   ├── readers/
-│   │   ├── csv_reader.py           # CSV file reader
-│   │   └── parquet_reader.py       # Parquet file reader
-│   ├── rules/
-│   │   └── rule_engine.py          # YAML rule parser (30 types)
-│   ├── validators/
-│   │   ├── result_models.py        # RuleResult & ValidationResult dataclasses
-│   │   └── validation_engine.py    # 30 validator implementations
-│   └── utils/
-│       └── helpers.py              # Utility functions
-├── tests/
-│   ├── test_rule_engine.py         # Rule parsing tests
-│   ├── test_validation_engine.py   # Validator tests (all 30 types)
-│   ├── test_db_manager.py          # Database CRUD tests
-│   └── test_llm_and_agent.py       # LLM client + Agent Loop tests
-├── SAMPLE_DATA/
-│   ├── valid_customers.csv
-│   ├── invalid_customers.csv
-│   ├── sample_rules.yaml           # 33 validation rules
-│   └── expected_output.json
-├── requirements.txt
-└── .env                            # API keys (gitignored)
-```
+---
 
-## Quick Start
+# 🌐 Deliverable Links
 
-### 1. Clone and Install
+## 🎥 Demo Video
 
-```bash
-git clone <repo-url>
-cd DQ-FIX
-pip install -r requirements.txt
-```
+https://www.loom.com/share/f3ac41243f184808b31a1ec2fa0d22f4
 
-### 2. Configure API Keys
+## 💻 GitHub Repository
 
-Create a `.env` file in the project root:
+https://github.com/Supriya0405/DQ-Fix
 
-```env
-GROQ_API_KEY=gsk_your_groq_key_here
-OPENAI_API_KEY=sk-proj-your-openai-key-here
-```
+---
 
-- **Groq** (free): Get key at https://console.groq.com → API Keys
-- **OpenAI** (paid): Get key at https://platform.openai.com → API Keys
-- **Ollama** (local): Install from https://ollama.ai, run `ollama pull llama3`
+# 📌 Overview
 
-### 3. Run the Dashboard
+DQ-FIX is an AI-powered Data Quality Agent designed to automatically detect, analyze, prioritize, and remediate data quality issues in enterprise datasets.
 
-```bash
-streamlit run app.py
-```
+Traditional validation tools stop after identifying failures. DQ-FIX goes beyond validation by using Large Language Models (LLMs) to explain issues, generate remediation suggestions, apply fixes, and revalidate datasets through an autonomous Agent Loop.
 
-### 4. Run Tests
+The platform supports both CSV and Parquet datasets and provides a complete end-to-end workflow from dataset ingestion to cleaned dataset generation.
 
-```bash
-python -m pytest tests/ -v
-```
+---
 
-## Usage
+#  Problem Statement
 
-1. **Upload** a CSV or Parquet file using the left panel
-2. **Preview** the data and column statistics
-3. **Auto-Generate Rules** — Click the AI button to generate validation rules from your data
-4. **Run Agent Loop** — The system validates data, analyzes failures with AI, applies fixes, and re-validates
-5. **View Results** — Rule summary table, AI insights, and fix suggestions
-6. **Audit History** — Browse all past runs in the History tab
+Organizations frequently struggle with poor data quality caused by:
 
-## SQLite Database Schema (7 Tables)
+* Missing values
+* Duplicate records
+* Invalid email addresses
+* Incorrect phone numbers
+* Invalid dates
+* Placeholder values
+* Business rule violations
+* Inconsistent formatting
 
-| Table | Purpose |
-|-------|---------|
-| `validation_runs` | Track every validation execution |
-| `validation_results` | Individual rule pass/fail per run |
-| `failed_records` | Sample failed row data |
-| `ai_analysis` | AI-generated root cause & explanations |
-| `remediation_suggestions` | AI-generated SQL/Pandas fixes |
-| `agent_iterations` | Agent Loop execution audit trail |
-| `api_validation_results` | External API (email) validation results |
+Traditional validation frameworks identify errors but fail to answer critical questions:
 
-## AI Providers
+* Why did the issue occur?
+* What business impact does it create?
+* How can it be fixed?
+* How severe is the issue?
+* Which records are affected?
 
-| Provider | Model | Cost | Speed | Setup |
-|----------|-------|------|-------|-------|
-| Groq | llama-3.3-70b-versatile | Free | Fast | API key in .env |
-| Ollama | llama3 (local) | Free | Medium | Install Ollama |
-| OpenAI | gpt-4o-mini | Paid | Fast | API key in .env |
+DQ-FIX addresses these challenges using AI-powered reasoning, automated remediation, and iterative validation.
 
-When no LLM is available, the system uses intelligent rule-based fallback analysis.
+---
 
-## Configuration
+# 🎯 Features
 
-All settings are in `config/settings.py`:
+## 📂 Dataset Processing
 
-- `DEFAULT_PROVIDER` — Default AI provider ("groq", "ollama", "openai")
-- `MAX_AGENT_ITERATIONS` — Max fix-retry cycles (default: 3)
-- `MAX_ROWS_PREVIEW` — Max rows in preview tables (default: 50)
-- `DATABASE_PATH` — SQLite database location
+* CSV Reader
+* Parquet Reader
+* Dataset Preview
+* Automatic Schema Detection
+* Dataset Statistics
 
-## License
+## 📋 AI-Generated YAML Rule Engine
 
-Hackathon project — for demonstration purposes.
+The system automatically generates validation rules by analyzing:
+
+* Column names
+* Data types
+* Sample values
+* Data distributions
+* Business context
+
+Generated rules are stored in YAML format and can be edited without modifying application code.
+
+---
+
+## ✅ Advanced Data Quality Validation
+
+Supports 30+ validation types:
+
+### Core Validation Rules
+
+* Not Null Validation
+* Unique Validation
+* Range Validation
+* Regex Validation
+* Email Validation
+* Date Validation
+* Phone Validation
+
+### Advanced Validation Rules
+
+* Allowed Values Validation
+* Duplicate Row Detection
+* Future Date Validation
+* Age Validation
+* Salary Validation
+* Currency Validation
+* Country Validation
+* Placeholder Detection
+* Missing Value Threshold Validation
+* Outlier Detection
+* Cross Field Validation
+* Business Rule Validation
+* Data Freshness Validation
+
+---
+
+## 🤖 AI-Powered Remediation Engine
+
+Powered by:
+
+* Ollama
+* Groq
+* OpenAI
+
+The AI generates:
+
+* Root Cause Analysis
+* Human Readable Explanations
+* Business Impact Analysis
+* SQL Fix Suggestions
+* Pandas Fix Suggestions
+* Prevention Recommendations
+
+---
+
+## 🚨 Severity & Confidence Engine
+
+Every failure is automatically prioritized using:
+
+Severity Levels:
+
+* Low
+* Medium
+* High
+
+Confidence Score:
+
+* 0–100%
+
+This helps users focus on the most critical issues first.
+
+---
+
+## 🔄 Autonomous Agent Loop
+
+The system implements a complete Agent Workflow:
+
+Validation
+↓
+Failure Detection
+↓
+AI Analysis
+↓
+Generate Fix
+↓
+Apply Fix
+↓
+Revalidate
+↓
+Health Score Improvement
+
+Maximum Iterations: 3
+
+This transforms the application from a validation tool into an intelligent Data Quality Agent.
+
+---
+
+## 🌐 External API Integration
+
+Email Verification API
+
+Provides:
+
+* Email Deliverability Validation
+* Domain Verification
+* Additional Confidence Assessment
+* Enhanced Data Quality Checks
+
+---
+
+## 💾 Validation History & Audit Trail
+
+All activities are stored in SQLite:
+
+* Validation Runs
+* Validation Results
+* AI Analysis
+* Generated Rules
+* Agent Iterations
+* Severity Scores
+* Confidence Scores
+
+This creates a complete audit trail for every dataset processed.
+
+---
+
+## 📊 Enterprise Dashboard
+
+Built using Streamlit.
+
+Features:
+
+* Dataset Upload
+* Dataset Preview
+* Validation Results
+* Failed Record Viewer
+* AI Insights Panel
+* Root Cause Analysis
+* Severity Dashboard
+* Confidence Dashboard
+* Agent Loop Status
+* Validation History
+* Download Cleaned CSV
+
+---
+
+# 🏗 System Architecture
+
+Dataset Upload
+↓
+CSV / Parquet Reader
+↓
+AI Rule Generation
+↓
+YAML Rule Engine
+↓
+Validation Engine
+↓
+Failed Record Detection
+↓
+LLM Analysis
+↓
+Severity & Confidence Engine
+↓
+Agent Loop
+↓
+Auto Fix Engine
+↓
+Revalidation
+↓
+SQLite Storage
+↓
+Dashboard Visualization
+↓
+Download Cleaned Dataset
+
+---
+
+# 🛠 Technology Stack
+
+| Category        | Technology             |
+| --------------- | ---------------------- |
+| Frontend        | Streamlit              |
+| Backend         | Python                 |
+| Data Processing | Pandas                 |
+| Configuration   | PyYAML                 |
+| AI Models       | Ollama, Groq, OpenAI   |
+| Database        | SQLite                 |
+| API Integration | Email Verification API |
+| Testing         | Pytest                 |
+| Version Control | GitHub                 |
+
+---
+
+# 🏆 Key Innovations
+
+* AI-Generated Validation Rules
+* LLM-Based Root Cause Analysis
+* SQL & Pandas Remediation Generation
+* Autonomous Agent Loop
+* Severity & Confidence Scoring
+* Email Verification API Integration
+* Health Score Calculation
+* Downloadable Cleaned Dataset
+* SQLite-Based Audit History
+* Enterprise Dashboard Experience
+
+---
+
+# 🎯 Project Outcome
+
+DQ-FIX successfully transforms traditional data validation into an AI-powered remediation platform by combining:
+
+* Data Quality Validation
+* AI Reasoning
+* Automated Remediation
+* Agentic Workflows
+* Historical Tracking
+* Interactive Analytics
+
+The result is a smarter, faster, and more scalable approach to managing enterprise data quality.
