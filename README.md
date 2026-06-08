@@ -1,53 +1,4 @@
----
----
 
-## 📁 Project Layout
-The repository has been reorganized into two top-level folders to separate the user-facing dashboard from application logic and data assets:
-
-- `frontend/` — Streamlit dashboard and UI code (run the dashboard from here).
-- `backend/` — Application logic, `src/` package, configuration, tests, and sample data.
-
-Key paths:
-
-- Frontend entry: `frontend/app.py`
-- Backend package: `backend/src/`
-- Backend scripts: `backend/run_agent_with_fixes.py`, `backend/apply_all_fixes.py`
-- Sample data: `backend/SAMPLE_DATA/`
-- Database (SQLite): `backend/dq_results.db`
-
-## ⚡ Quick Start
-
-1. Install dependencies (preferably inside a virtual environment):
-
-```bash
-python -m venv .venv
-source .venv/Scripts/activate   # Windows: .venv\\Scripts\\activate
-pip install -r requirements.txt
-```
-
-2. Run the Streamlit dashboard:
-
-```bash
-streamlit run frontend/app.py
-```
-
-3. Run the backend agent runner (CLI):
-
-```bash
-python backend/run_agent_with_fixes.py
-```
-
-4. Run tests:
-
-```bash
-pytest
-```
-
-Notes:
-- The frontend automatically adds `backend/` to `sys.path` so imports continue to work after the restructure.
-- Database and sample data were moved into `backend/` to keep runtime assets together.
-
----
 
 # 📌 Overview
 # 🚀 DQ-FIX: Data Quality Agent with Auto-Fix Suggestions
@@ -345,6 +296,57 @@ Download Cleaned Dataset
 | API Integration | Email Verification API |
 | Testing         | Pytest                 |
 | Version Control | GitHub                 |
+
+---
+
+---
+---
+
+## 📁 Project Layout
+The repository has been reorganized into two top-level folders to separate the user-facing dashboard from application logic and data assets:
+
+- `frontend/` — Streamlit dashboard and UI code (run the dashboard from here).
+- `backend/` — Application logic, `src/` package, configuration, tests, and sample data.
+
+Key paths:
+
+- Frontend entry: `frontend/app.py`
+- Backend package: `backend/src/`
+- Backend scripts: `backend/run_agent_with_fixes.py`, `backend/apply_all_fixes.py`
+- Sample data: `backend/SAMPLE_DATA/`
+- Database (SQLite): `backend/dq_results.db`
+
+## ⚡ Quick Start
+
+1. Install dependencies (preferably inside a virtual environment):
+
+```bash
+python -m venv .venv
+source .venv/Scripts/activate   # Windows: .venv\\Scripts\\activate
+pip install -r requirements.txt
+```
+
+2. Run the Streamlit dashboard:
+
+```bash
+streamlit run frontend/app.py
+```
+
+3. Run the backend agent runner (CLI):
+
+```bash
+python backend/run_agent_with_fixes.py
+```
+
+4. Run tests:
+
+```bash
+pytest
+```
+
+Notes:
+- The frontend automatically adds `backend/` to `sys.path` so imports continue to work after the restructure.
+- Database and sample data were moved into `backend/` to keep runtime assets together.
 
 ---
 
