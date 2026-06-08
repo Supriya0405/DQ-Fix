@@ -2,7 +2,7 @@
 DQ-FIX — Enterprise Data Quality Dashboard
 ==========================================
 Full 3-panel enterprise dashboard with AI-powered data quality analysis.
-Run: streamlit run app.py
+Run: streamlit run frontend/app.py
 """
 
 import streamlit as st
@@ -11,7 +11,8 @@ import os
 import sys
 import json
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add backend folder to Python search path so frontend can import backend modules
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "backend")))
 
 from config.settings import (
     APP_TITLE, APP_ICON, SAMPLE_DATA_DIR, MAX_ROWS_PREVIEW,
